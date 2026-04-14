@@ -605,10 +605,10 @@ const RW2_EASY_QUESTIONS = [
   {
     id: 'rw2e_q16', num: 16, type: 'sec', domain: 'sec',
     signal: null, highSignal: false,
-    passage: 'The James Webb Space Telescope, launched in December 2021, has produced images of galaxies that formed just a few hundred million years after the Big Bang _______ giving scientists their clearest view yet of the early universe.',
+    passage: 'The James Webb Space Telescope, launched in December 2021, has produced images of galaxies that formed just a few hundred million years after the _______ giving scientists their clearest view yet of the early universe.',
     table: null, underline: null,
     question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
-    choices: { A: ',', B: ';', C: ':', D: '—' },
+    choices: { A: 'Big Bang, giving', B: 'Big Bang; giving', C: 'Big Bang: giving', D: 'Big Bang — giving' },
     answer: 'A', isSPR: false
   },
   {
