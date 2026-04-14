@@ -425,36 +425,106 @@ function generateReport(sessionData) {
   </section>`;
 
   // ── SECTION 3: Personality × Performance ──────────────────────────────────
-  const perfInsights = profile.sectionThree.patterns;
 
-  // Compute O-signal: compare inference/dual-text performance vs. total
+  // ── O-signal: inference vs procedural accuracy ──
   const inferenceQuestions = RW1_QUESTIONS.filter(q => q.type === 'inference' || q.type === 'dual_text');
   const inferenceCorrect = inferenceQuestions.filter(q => {
     const g = rw1Responses[q.id];
     return g && g.toUpperCase() === q.answer;
   }).length;
   const inferenceTotal = inferenceQuestions.length;
-  const inferenceRate = inferenceTotal > 0 ? inferenceCorrect / inferenceTotal : null;
+  const inferenceRate  = inferenceTotal > 0 ? inferenceCorrect / inferenceTotal : null;
   const overallRw1Rate = rw1Score / 20;
 
-  // Behavioral insight strings
-  let behavioralInsights = '';
-  if (signals.nSpikeRate !== null && signals.nSpikeRate > 0.5) {
-    behavioralInsights += `<p class="behavioral-insight"><span class="signal-tag N">N-SIGNAL</span> Post-difficulty response time spikes detected in ${Math.round(signals.nSpikeRate * 100)}% of measured transitions — consistent with performance sensitivity to sustained difficulty.</p>`;
-  }
-  if (signals.cPacingRatio !== null) {
-    const pacingDesc = signals.cPacingRatio < 0.6 ? 'significantly faster than early-module pacing — a careless-error risk late in timed sections'
-      : signals.cPacingRatio > 1.4 ? 'slower than early-module pacing — sustained focus through the module'
-      : 'consistent with early-module pacing — stable execution across the module';
-    behavioralInsights += `<p class="behavioral-insight"><span class="signal-tag C">C-SIGNAL</span> Late-module pacing was ${pacingDesc}.</p>`;
-  }
-  if (inferenceRate !== null && overallRw1Rate !== null) {
-    const diff = inferenceRate - overallRw1Rate;
-    if (Math.abs(diff) > 0.15) {
-      const dir = diff > 0 ? 'above' : 'below';
-      behavioralInsights += `<p class="behavioral-insight"><span class="signal-tag O">O-SIGNAL</span> Inference and dual-text accuracy (${inferenceCorrect}/${inferenceTotal}) is ${Math.round(Math.abs(diff)*100)}pp ${dir} overall RW1 performance — ${diff > 0 ? 'verbal reasoning is a strength relative to mechanics' : 'inference questions are showing a gap relative to procedural question types'}.</p>`;
+  // ── Data-derived observations (always rendered, use real numbers) ──
+  const dataObservations = [];
+
+  // 1. Module comparison
+  const rw1Rate  = rw1Score / 20;
+  const rw2Rate  = rw2Score / 20;
+  const modDiff  = rw2Rate - rw1Rate;
+  if (Math.abs(modDiff) >= 0.2) {
+    if (modDiff > 0) {
+      dataObservations.push(`Reading performance improved from Module 1 (${rw1Score}/20) to Module 2 (${rw2Score}/20). This warm-up pattern — stronger performance once settled into the sitting — is worth testing in practice mocks to confirm it's consistent.`);
+    } else {
+      dataObservations.push(`Reading performance dropped from Module 1 (${rw1Score}/20) to Module 2 (${rw2Score}/20 ${moduleType === 'hard' ? '— advanced module' : ''}). This pattern suggests fatigue or attention drop-off across the sitting, which is a pacing and stamina target.`);
     }
   }
+
+  // 2. Inference vs procedural gap (O-signal, threshold 10pp)
+  if (inferenceRate !== null && overallRw1Rate !== null) {
+    const diff = inferenceRate - overallRw1Rate;
+    if (diff >= 0.10) {
+      dataObservations.push(`Inference and dual-text accuracy (${inferenceCorrect}/${inferenceTotal}) ran ${Math.round(diff * 100)} percentage points above overall Module 1 performance. The reasoning is working. The score gap lives in timed mechanical execution, not comprehension.`);
+    } else if (diff <= -0.10) {
+      dataObservations.push(`Inference and dual-text accuracy (${inferenceCorrect}/${inferenceTotal}) ran ${Math.round(Math.abs(diff) * 100)} percentage points below overall Module 1 performance. These question types are the primary RW content target — they require a specific step-by-step approach, not just stronger reading.`);
+    }
+  }
+
+  // 3. Dominant RW domain gap (combined RW1 + RW2)
+  const domainRates = {
+    'Craft & Structure':            { c: (rw1Domains.craft_structure?.correct||0) + (rw2Domains.craft_structure?.correct||0), t: 16 },
+    'Information & Ideas':          { c: (rw1Domains.info_ideas?.correct||0)       + (rw2Domains.info_ideas?.correct||0),       t: 14 },
+    'Standard English Conventions': { c: (rw1Domains.sec?.correct||0)              + (rw2Domains.sec?.correct||0),              t: 4  },
+    'Expression of Ideas':          { c: (rw1Domains.eoi?.correct||0)              + (rw2Domains.eoi?.correct||0),              t: 6  },
+  };
+  const domainRateArr = Object.entries(domainRates)
+    .filter(([, v]) => v.t > 0)
+    .map(([name, v]) => ({ name, rate: v.c / v.t, c: v.c, t: v.t }));
+  if (domainRateArr.length >= 2) {
+    const best  = domainRateArr.reduce((a, b) => a.rate > b.rate ? a : b);
+    const worst = domainRateArr.reduce((a, b) => a.rate < b.rate ? a : b);
+    if (best.name !== worst.name && (best.rate - worst.rate) >= 0.25) {
+      dataObservations.push(`${best.name} was the strongest domain (${best.c}/${best.t}). ${worst.name} showed the largest gap (${worst.c}/${worst.t}). That gap is the primary content focus for RW — not a reading problem, a question-type strategy problem.`);
+    }
+  }
+
+  // 4. Math pattern — find weakest domain
+  const mathDomainArr = [
+    { name: 'Algebra',               d: mathDomains.algebra       },
+    { name: 'Advanced Math',         d: mathDomains.advanced_math },
+    { name: 'Problem Solving & Data',d: mathDomains.psda          },
+    { name: 'Geometry',              d: mathDomains.geometry      },
+  ].filter(x => x.d.t > 0).map(x => ({ name: x.name, rate: x.d.c / x.d.t, c: x.d.c, t: x.d.t }));
+  if (mathDomainArr.length >= 2 && mathScore < 14) {
+    const weakMath = mathDomainArr.reduce((a, b) => a.rate < b.rate ? a : b);
+    dataObservations.push(`Math: ${weakMath.name} was the weakest domain (${weakMath.c}/${weakMath.t}). This is the highest-leverage content target — improving one domain in math has an outsized effect on the scaled score.`);
+  }
+
+  // ── Behavioral signal strings ──
+  let behavioralInsights = '';
+
+  // N-signal (threshold lowered to 0.3)
+  if (signals.nSpikeRate !== null && signals.nSpikeRate >= 0.3) {
+    const pct = Math.round(signals.nSpikeRate * 100);
+    behavioralInsights += `<p class="behavioral-insight"><span class="signal-tag N">N-SIGNAL</span> Response time spiked on questions immediately following high-difficulty items in ${pct}% of measured transitions — consistent with difficulty-sensitivity affecting subsequent questions. This is not a content gap; it is a recovery pattern.`;
+    if (pct >= 60) behavioralInsights += ` The signal is strong and should be the first focus of session work.`;
+    behavioralInsights += `</p>`;
+  }
+
+  // C-signal
+  if (signals.cPacingRatio !== null) {
+    const pacingDesc = signals.cPacingRatio < 0.6
+      ? `significantly faster than early-module pacing (ratio: ${signals.cPacingRatio.toFixed(2)}) — late-module rushing is a careless-error risk`
+      : signals.cPacingRatio > 1.4
+      ? `slower than early-module pacing (ratio: ${signals.cPacingRatio.toFixed(2)}) — focus held through the module`
+      : `consistent with early-module pacing (ratio: ${signals.cPacingRatio.toFixed(2)}) — stable execution`;
+    behavioralInsights += `<p class="behavioral-insight"><span class="signal-tag C">C-SIGNAL</span> Late-module math pacing was ${pacingDesc}.</p>`;
+  }
+
+  // O-signal (behavioral dwell version, in addition to accuracy version above)
+  if (signals.oEngagement !== null) {
+    if (signals.oEngagement > 1.6) {
+      behavioralInsights += `<p class="behavioral-insight"><span class="signal-tag O">O-SIGNAL</span> Dwell time on inference and dual-text questions was ${Math.round(signals.oEngagement * 10) / 10}× the dwell time on procedural questions — deep engagement with reasoning items is confirmed.</p>`;
+    } else if (signals.oEngagement < 0.7) {
+      behavioralInsights += `<p class="behavioral-insight"><span class="signal-tag O">O-SIGNAL</span> Dwell time on inference questions was lower than on procedural questions — these items are being processed quickly, which may explain accuracy gaps on reasoning question types.</p>`;
+    }
+  }
+
+  // ── Profile context (supplementary, present tense) ──
+  const profileContext = profile.sectionThree.patterns.map(p =>
+    `<li>${p}</li>`
+  ).join('');
 
   const s3 = `
   <section class="report-section" id="section-3">
@@ -463,11 +533,23 @@ function generateReport(sessionData) {
       <h2>Where Personality Meets Performance</h2>
     </div>
 
-    <div class="insight-list">
-      ${perfInsights.map(p => `<div class="insight-item"><span class="insight-bullet">→</span><p>${p}</p></div>`).join('')}
-    </div>
+    ${dataObservations.length > 0
+      ? `<div class="insight-list">
+          ${dataObservations.map(o => `<div class="insight-item"><span class="insight-bullet">→</span><p>${o}</p></div>`).join('')}
+        </div>`
+      : `<p style="font-size:14px;color:var(--text-muted);margin-bottom:24px;">Score patterns from this session did not produce sufficient differentiation for data-derived insights. The profile context below reflects what students with this OCEAN signature typically show.</p>`
+    }
 
-    ${behavioralInsights ? `<div class="behavioral-insights"><h3>Behavioral Signals from This Session</h3>${behavioralInsights}</div>` : ''}
+    ${behavioralInsights
+      ? `<div class="behavioral-insights"><h3>Behavioral Signals from This Session</h3>${behavioralInsights}</div>`
+      : ''}
+
+    <div class="behavioral-insights" style="margin-top:16px;">
+      <h3>What This Profile Typically Shows</h3>
+      <ul style="padding-left:18px;margin:0;display:flex;flex-direction:column;gap:8px;">
+        ${profileContext}
+      </ul>
+    </div>
 
     <div class="primary-gap-box">
       <span class="gap-label">Primary Gap</span>
