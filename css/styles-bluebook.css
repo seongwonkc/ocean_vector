@@ -713,3 +713,36 @@ body {
 
 /* ─── KATEX OVERRIDE ────────────────────────────────────────────────────── */
 .katex { font-size: 1em !important; color: var(--text); }
+
+/* ─── CALCULATOR PANEL ───────────────────────────────────────────────────── */
+.bb-calc-panel {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 360px;
+  height: 480px;
+  background: var(--header-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.35);
+  z-index: 2000;
+  flex-direction: column;
+  overflow: hidden;
+}
+.bb-calc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: #111;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.8);
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+.bb-calc-iframe {
+  width: 100%;
+  flex: 1;
+  border: none;
+  background: #fff;
+}

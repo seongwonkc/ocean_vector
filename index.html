@@ -51,9 +51,7 @@ window.katexLoaded = false;
 document.addEventListener('katexReady', () => { window.katexLoaded = true; renderKatex(); });
 function renderKatex() {
   if (!window.katexLoaded || typeof renderMathInElement !== 'function') return;
-  const target = document.querySelector('.katex-content');
-  if (!target) return;
-  renderMathInElement(target, {
+  renderMathInElement(document.getElementById('app'), {
     delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],
     throwOnError:false,
   });
@@ -87,15 +85,7 @@ function updateTimerDisplay() {
     nav.classList.toggle('warn',     S.timerRemaining<=300 && S.timerRemaining>60);
     nav.classList.toggle('critical', S.timerRemaining<=60);
   }
-  const iv = document.getElementById('timer-inline-val');
-  if (iv) {
-    iv.textContent = t;
-    const ib = document.getElementById('timer-inline');
-    if (ib) {
-      ib.classList.toggle('warn',     S.timerRemaining<=300 && S.timerRemaining>60);
-      ib.classList.toggle('critical', S.timerRemaining<=60);
-    }
-  }
+
 }
 function autoSubmitModule() {
   const inp = document.getElementById('spr-input');
@@ -171,9 +161,64 @@ function render() {
 }
 
 // ── Intake ──────────────────────────────────────────────────────────────────
+const IS_DEV = new URLSearchParams(window.location.search).get('dev') === '1';
+
+const DEMO_PROFILES = ['OCN','OCn','Ocn','OcN','oCn','oCN','ocn','ocN'];
+
+function runDemo(profileCode) {
+  // Fill fake intake
+  S.studentName='Demo Student'; S.currentScore='1180'; S.targetScore='1450';
+  S.testDate='2026-08-01'; S.weeklyStudyHours='3-5';
+
+  // Fill personality to match profile
+  const fakeOcean = {
+    OCN:{ O:9, C:9, N:8, E:2, A:1 },
+    OCn:{ O:9, C:9, N:2, E:2, A:1 },
+    Ocn:{ O:9, C:2, N:2, E:2, A:1 },
+    OcN:{ O:9, C:2, N:8, E:2, A:1 },
+    oCn:{ O:2, C:9, N:2, E:2, A:1 },
+    oCN:{ O:2, C:9, N:8, E:2, A:1 },
+    ocn:{ O:2, C:2, N:2, E:2, A:1 },
+    ocN:{ O:2, C:2, N:8, E:2, A:1 },
+  };
+  S.oceanScores = fakeOcean[profileCode] || fakeOcean['OCN'];
+  S.profileCode  = profileCode;
+
+  // Fake personality responses (pair 1 → O for all O profiles, etc.)
+  PERSONALITY_PAIRS.forEach(p => { S.personalityResponses[p.id] = 'A'; });
+
+  // Fake test responses — plausible scores
+  S.moduleType = 'easy';
+  RW1_QUESTIONS.forEach((q,i) => { S.rw1Responses[q.id]  = i < 12 ? q.answer : (q.choices ? 'A' : '5'); });
+  RW2_EASY_QUESTIONS.forEach((q,i) => { S.rw2Responses[q.id] = i < 14 ? q.answer : (q.choices ? 'A' : '5'); });
+  MATH_QUESTIONS.forEach((q,i) => { S.mathResponses[q.id]  = i < 8  ? q.answer : (q.isSPR ? '5' : 'A'); });
+
+  S.rw1Score  = scoreRWModule(S.rw1Responses, RW1_QUESTIONS);
+  S.rw2Score  = scoreRWModule(S.rw2Responses, RW2_EASY_QUESTIONS);
+  S.mathScore = scoreMathModule(S.mathResponses, MATH_QUESTIONS);
+
+  // Fake behavioral data
+  const now = Date.now();
+  [...RW1_QUESTIONS, ...RW2_EASY_QUESTIONS, ...MATH_QUESTIONS].forEach((q,i) => {
+    S.behavioralData[q.id] = { T0: now + i*25000, T1: now + i*25000 + 3000, changes: [], T_final: now + i*25000 + 22000 };
+  });
+
+  S.view = 'done';
+  render();
+}
+
 function htmlIntake() {
+  const devPanel = IS_DEV ? `
+  <div style="background:#FFF8E1;border:1.5px solid #FFD54F;border-radius:6px;padding:16px 20px;margin-bottom:28px;">
+    <div style="font-size:12px;font-weight:700;letter-spacing:0.1em;color:#F57C00;margin-bottom:10px;">⚡ DEV MODE — Generate Demo Report</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+      ${DEMO_PROFILES.map(p=>`<button class="bb-btn" style="font-size:12px;padding:5px 12px;background:#fff;border:1.5px solid #FFD54F;color:#333;" onclick="runDemo('${p}')">${p}</button>`).join('')}
+    </div>
+  </div>` : '';
+
   return `
 <div class="bb-screen">
+  ${devPanel}
   <div class="bb-title">Welcome to VECTOR</div>
   <div class="bb-subtitle">Complete all fields below, then work through the assessment. Plan for approximately 90 minutes.</div>
 
@@ -382,29 +427,33 @@ function htmlQuestion() {
   </div>`;
 
   const typeLabel=(q.type||'').replace(/_/g,' ');
-  const timerBlock=`
-  <div class="bb-timer-inline" id="timer-inline">
-    <span class="bb-timer-val" id="timer-inline-val">${fmt(S.timerRemaining)}</span>
-    <span class="bb-timer-lbl">remaining</span>
-  </div>`;
   const dotsStrip=`<div class="bb-dots-strip">${dots}</div>`;
+  const calcBtn = isMath ? `<button class="bb-btn bb-btn-ghost" id="btn-calc" onclick="toggleCalc()" style="font-size:12px;padding:6px 12px;">🖩 Calculator</button>` : '';
 
   // Math or no-passage: single column
   if(isMath || !passageHtml) {
     const stem=q.text||q.question||'';
     return `
 <div class="bb-math-layout">
-  ${timerBlock}
-  ${dotsStrip}
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+    ${dotsStrip.replace('margin-bottom:16px','margin-bottom:0')}
+    ${calcBtn}
+  </div>
   <div class="bb-math-stem">
     <div style="font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">Q${q.num} · ${typeLabel}</div>
     ${passageHtml?`<div style="margin-bottom:20px;">${passageHtml}</div>`:''}
-    <div class="${q.katex ? 'katex-content' : ''}" style="font-size:15px;color:var(--text);line-height:1.75;">${stem}</div>
+    <div class="${q.katex?'katex-content':''}" style="font-size:15px;color:var(--text);line-height:1.75;">${stem}</div>
   </div>
-  <div class="${q.katex ? 'katex-content' : ''}">${answerHtml}</div>
+  <div class="${q.katex?'katex-content':''}">${answerHtml}</div>
   ${navHtml}
-</div>`;
-  }
+</div>
+<div id="calc-panel" class="bb-calc-panel" style="display:none;">
+  <div class="bb-calc-header">
+    <span>Calculator</span>
+    <button onclick="toggleCalc()" style="background:none;border:none;cursor:pointer;font-size:18px;color:#fff;line-height:1;">×</button>
+  </div>
+  <iframe src="https://www.desmos.com/scientific" class="bb-calc-iframe" title="Scientific Calculator"></iframe>
+</div>`;\n  }
 
   // Split pane
   return `
@@ -412,7 +461,6 @@ function htmlQuestion() {
   <div class="bb-left-panel">${passageHtml}</div>
   <div class="bb-divider-line"></div>
   <div class="bb-right-panel">
-    ${timerBlock}
     ${dotsStrip}
     <div class="bb-q-num">
       Question ${q.num} of ${questions.length}
@@ -425,6 +473,11 @@ function htmlQuestion() {
 </div>`;
 }
 
+function toggleCalc() {
+  const panel = document.getElementById('calc-panel');
+  if (panel) panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+}
+
 // ── Confirmation ─────────────────────────────────────────────────────────────
 function htmlConfirmation() {
   return `
@@ -433,6 +486,9 @@ function htmlConfirmation() {
   <div class="bb-confirm-title">Assessment Complete</div>
   <div class="bb-confirm-body">Your results are ready. Your consultant will walk you through them at your session.</div>
   ${S.studentName?`<div class="bb-confirm-name">Submitted for: ${esc(S.studentName)}</div>`:''}
+  <div style="margin-top:32px;">
+    <button class="bb-btn bb-btn-secondary" onclick="window.location.reload()">← Return to Home</button>
+  </div>
 </div>`;
 }
 
