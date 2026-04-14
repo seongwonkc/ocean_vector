@@ -51,7 +51,9 @@ window.katexLoaded = false;
 document.addEventListener('katexReady', () => { window.katexLoaded = true; renderKatex(); });
 function renderKatex() {
   if (!window.katexLoaded || typeof renderMathInElement !== 'function') return;
-  renderMathInElement(document.getElementById('app'), {
+  const target = document.querySelector('.katex-content');
+  if (!target) return;
+  renderMathInElement(target, {
     delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],
     throwOnError:false,
   });
@@ -397,9 +399,9 @@ function htmlQuestion() {
   <div class="bb-math-stem">
     <div style="font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">Q${q.num} · ${typeLabel}</div>
     ${passageHtml?`<div style="margin-bottom:20px;">${passageHtml}</div>`:''}
-    <div style="font-size:15px;color:var(--text);line-height:1.75;">${stem}</div>
+    <div class="${q.katex ? 'katex-content' : ''}" style="font-size:15px;color:var(--text);line-height:1.75;">${stem}</div>
   </div>
-  ${answerHtml}
+  <div class="${q.katex ? 'katex-content' : ''}">${answerHtml}</div>
   ${navHtml}
 </div>`;
   }

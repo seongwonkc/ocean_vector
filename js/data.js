@@ -112,7 +112,7 @@ const RW1_QUESTIONS = [
   {
     id: 'rw1_q4', num: 4, type: 'structure', domain: 'craft_structure',
     signal: 'O', highSignal: false,
-    passage: 'In 2018, researchers studying soil microbiomes discovered that certain bacterial colonies produce chemical signals that inhibit the growth of competing species. Earlier studies had focused primarily on competition through nutrient depletion — the idea that bacteria simply outcompete rivals by consuming available resources. The new findings suggest, however, that direct chemical interference is at least as important as resource competition in shaping microbial communities.',
+    passage: 'For decades, researchers studying soil microbiomes assumed that bacterial colonies competed primarily through nutrient depletion — the idea that bacteria simply outcompete rivals by consuming available resources. In 2018, however, a new study challenged this view: researchers discovered that certain bacterial colonies produce chemical signals that actively inhibit the growth of competing species. The findings suggest that direct chemical interference is at least as important as resource competition in shaping microbial communities.',
     table: null, underline: null,
     question: 'Which choice best describes the overall structure of the text?',
     choices: {
@@ -783,7 +783,7 @@ const RW2_HARD_QUESTIONS = [
     },
     answer: 'A', isSPR: false
   },
-  {
+    {
     id: 'rw2h_q9', num: 9, type: 'data', domain: 'info_ideas',
     signal: 'N', highSignal: false,
     passage: 'A researcher is analyzing job satisfaction data across industries.',
@@ -799,10 +799,10 @@ const RW2_HARD_QUESTIONS = [
     underline: null,
     question: 'A researcher concludes that hybrid work arrangements are associated with higher reported satisfaction than fully remote work in every industry surveyed. Which choice most effectively uses data from the table to support this conclusion?',
     choices: {
-      A: 'In each of the four industries, the percentage of hybrid workers reporting high satisfaction exceeds the percentage of remote workers reporting high satisfaction.',
-      B: 'In technology, hybrid workers report higher satisfaction (74%) than in-person workers (61%), while remote workers report 71%.',
-      C: 'Healthcare workers report lower satisfaction when working remotely (49%) than workers in any other industry in any arrangement.',
-      D: 'Finance workers report higher satisfaction in hybrid arrangements (67%) than in-person workers in healthcare (58%).'
+      A: 'In technology, hybrid workers (74%) report higher satisfaction than remote workers (71%), and the same pattern — hybrid exceeding remote — holds in healthcare, education, and finance as well.',
+      B: 'Healthcare hybrid workers (62%) and education hybrid workers (68%) both report higher satisfaction than their remote counterparts (49% and 52%, respectively).',
+      C: 'Remote workers report lower satisfaction than in-person workers in three of the four industries surveyed.',
+      D: 'The highest satisfaction rate across all work arrangements belongs to technology hybrid workers, at 74%.'
     },
     answer: 'A', isSPR: false
   },
