@@ -427,10 +427,10 @@ function htmlQuestion() {
     let txt = q.passage;
     // Highlight underlined sentence
     if (q.underline) {
-      const safe = q.underline.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      txt = txt.replace(new RegExp(safe), `<u>${q.underline}</u>`);
-    }
-    passageHtml = `<div class="passage-box">${txt}</div>`;
+      txt = txt + ' <u>' + q.underline + '</u>';
+}
+passageHtml = `<div class="passage-box">${txt}</div>`;  
+    
     if (q.table) passageHtml += q.table;
 
   } else if (q.table) {
