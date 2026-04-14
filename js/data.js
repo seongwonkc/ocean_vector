@@ -112,7 +112,7 @@ const RW1_QUESTIONS = [
   {
     id: 'rw1_q4', num: 4, type: 'structure', domain: 'craft_structure',
     signal: 'O', highSignal: false,
-    passage: 'In 2018, researchers studying soil microbiomes discovered that certain bacterial colonies produce chemical signals that inhibit the growth of competing species. Earlier studies had focused primarily on competition through nutrient depletion — the idea that bacteria simply outcompete rivals by consuming available resources. The new findings suggest, however, that direct chemical interference is at least as important as resource competition in shaping microbial communities.',
+    passage: 'For decades, researchers studying soil microbiomes assumed that bacterial colonies competed primarily through nutrient depletion — the idea that bacteria simply outcompete rivals by consuming available resources. In 2018, however, a new study challenged this view: researchers discovered that certain bacterial colonies produce chemical signals that actively inhibit the growth of competing species. The findings suggest that direct chemical interference is at least as important as resource competition in shaping microbial communities.',
     table: null, underline: null,
     question: 'Which choice best describes the overall structure of the text?',
     choices: {
