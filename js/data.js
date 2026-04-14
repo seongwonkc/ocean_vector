@@ -112,7 +112,7 @@ const RW1_QUESTIONS = [
   {
     id: 'rw1_q4', num: 4, type: 'structure', domain: 'craft_structure',
     signal: 'O', highSignal: false,
-    passage: 'For decades, researchers studying soil microbiomes assumed that bacterial colonies competed primarily through nutrient depletion — the idea that bacteria simply outcompete rivals by consuming available resources. In 2018, however, a new study challenged this view: researchers discovered that certain bacterial colonies produce chemical signals that actively inhibit the growth of competing species. The findings suggest that direct chemical interference is at least as important as resource competition in shaping microbial communities.',
+    passage: 'In 2018, researchers studying soil microbiomes discovered that certain bacterial colonies produce chemical signals that inhibit the growth of competing species. Earlier studies had focused primarily on competition through nutrient depletion — the idea that bacteria simply outcompete rivals by consuming available resources. The new findings suggest, however, that direct chemical interference is at least as important as resource competition in shaping microbial communities.',
     table: null, underline: null,
     question: 'Which choice best describes the overall structure of the text?',
     choices: {
@@ -783,7 +783,7 @@ const RW2_HARD_QUESTIONS = [
     },
     answer: 'A', isSPR: false
   },
-    {
+  {
     id: 'rw2h_q9', num: 9, type: 'data', domain: 'info_ideas',
     signal: 'N', highSignal: false,
     passage: 'A researcher is analyzing job satisfaction data across industries.',
@@ -1326,4 +1326,183 @@ const EA_MODIFIERS = {
   highE: 'Verbal processing works well for you — talking through material with a consultant or study partner tends to accelerate understanding.',
   highA: 'Positive reinforcement and explicit acknowledgment of progress matter more for your motivation than for most students.',
   lowA_highOC: 'You will push back on recommendations you don\'t agree with — that\'s useful signal. Engage with it directly rather than deferring.'
+};
+
+// ─── DOMAIN PRESCRIPTION LIBRARY (Section 5) ─────────────────────────────────
+// Structure: domain → { total, label, base, oceanModifiers: { traitCode_level: string } }
+// Used by generateSection5() in scoring.js
+
+const DOMAIN_PRESCRIPTIONS = {
+  craft_structure: {
+    total: 16,
+    label: 'Craft & Structure',
+    questionCount: '~15 questions (28% of RW)',
+    base: {
+      what: 'Vocabulary-in-context and text structure questions — the two question types that require the most exposure to formal and archaic writing styles.',
+      why: 'The SAT draws heavily from 19th and early 20th-century literary prose and formal academic writing. Students who haven\'t read in this register mistake unfamiliar syntax for ambiguity and over-eliminate correct answers.',
+      drills: [
+        'Practice vocabulary-in-context questions using sentence substitution — the correct word must fit the passage\'s tone and register, not just its literal meaning.',
+        'For text structure questions, identify what each sentence *does* (introduces, qualifies, illustrates, concludes) before looking at answer choices.',
+        'Read one short passage weekly from: Jane Austen (structured syntax), Charles Dickens (complex sentences), or Joseph Conrad (dense academic prose). Standard eBooks has all of these free.',
+      ],
+      reading: ['Jane Austen — Sense and Sensibility', 'Charles Dickens — Bleak House', 'Joseph Conrad — Heart of Darkness'],
+      impact: 'Craft & Structure is ~15 questions. Each question recovered here has direct, high-leverage score impact.',
+    },
+    oceanModifiers: {
+      O_high: 'You tend to look for deeper interpretive meaning — but the SAT rewards functional analysis, not literary insight. Train the reflex: "what does this sentence *do*?" before asking "what does it *mean*?"',
+      C_low: 'Vocabulary gaps compound without a consistent review process. A daily 5-question vocab-in-context drill (timed, no notes) builds the pattern recognition this domain requires more efficiently than memorization.',
+      N_high: 'When a passage style feels unfamiliar, the instinct is to second-guess your reading. Trust the passage — every correct answer is directly provable from the text. Unfamiliar register is a surface problem, not a comprehension failure.',
+    },
+  },
+
+  info_ideas: {
+    total: 14,
+    label: 'Information & Ideas',
+    questionCount: '~14 questions (26% of RW)',
+    base: {
+      what: 'Inference, evidence selection, and paired-text questions — consistently the highest-difficulty domain on the RW section.',
+      why: 'These questions require treating the passage as a closed logical system. The correct answer must be provable from the text; three answers are 100% wrong. Most students try to find the right answer — high scorers hunt for what\'s provably wrong.',
+      drills: [
+        'For every inference question, ask: "which sentence in the passage directly proves this?" Not suggests — proves. If you can\'t point to it, eliminate the choice.',
+        'For paired-text questions, identify the relationship between authors before reading the question: do they agree, partially agree, or disagree?',
+        'Read science and social science articles: Quanta Magazine, The Atlantic, or Scientific American short pieces. The SAT\'s Information & Ideas passages mirror this register exactly.',
+      ],
+      reading: ['Quanta Magazine (weekly)', 'The Atlantic — long reads', 'Scientific American — short features'],
+      impact: 'Information & Ideas is ~14 questions and typically the highest-leverage domain for score improvement. The 700+ threshold requires near-mastery here.',
+    },
+    oceanModifiers: {
+      N_high: 'Inference questions feel ambiguous — which triggers the anxiety-driven answer-change cycle. They are not ambiguous: the SAT has one unambiguously correct answer per question. Reframing this as a logic puzzle (find the 3 wrong answers) removes the interpretive uncertainty that feeds rumination.',
+      C_low: 'The tendency to move quickly without re-reading evidence is the primary error pattern here. Build an explicit "prove it" protocol: underline the sentence that supports your answer before selecting it.',
+      O_high: 'High-O students often over-read — finding implications the passage doesn\'t support. The SAT tests what the passage literally says, not what logically follows. Stay inside the text.',
+      O_low: 'The step-by-step approach that works well on procedural questions doesn\'t transfer directly to inference. Build an explicit strategy: identify claim → find evidence → match to answer choice.',
+    },
+  },
+
+  sec: {
+    total: 4,
+    label: 'Standard English Conventions',
+    questionCount: '~4 questions (SEC)',
+    base: {
+      what: 'Grammar, punctuation, and sentence structure — the most rule-based domain on the RW section.',
+      why: 'SEC questions reward systematic pattern recognition. Unlike inference questions, these have clear mechanical answers. The payoff from targeted drilling here is fast.',
+      drills: [
+        'Work through rules in this order: sentence boundaries (fragments and run-ons) → subject-verb agreement → pronoun reference → verb tense → punctuation. This sequence covers 80%+ of SEC questions.',
+        'Edit one paragraph of writing daily — not for content, for grammar. The editor\'s instinct transfers directly to SEC question performance.',
+        'For transition questions, write out the logical relationship in plain English first ("the second sentence contradicts the first") before choosing a transition word.',
+      ],
+      reading: ['Any well-edited newspaper or magazine (The Economist, The New Yorker) — read for sentence structure, not content'],
+      impact: 'SEC is a small domain (~4 questions in this assessment) but highly recoverable. Rule-based drilling produces fast, reliable gains.',
+    },
+    oceanModifiers: {
+      O_high: 'Grammar feels mechanical and low-interest — which is accurate, but it\'s also the fastest recoverable domain. Systematize it: learn the 6 rules that cover most questions, then stop. Don\'t explore the edges.',
+      C_high: 'The systematic approach you naturally apply to preparation maps well to SEC. Build a rule checklist and work through it per question — this is the domain where your strengths show up most clearly.',
+      N_high: 'When unsure on grammar, the instinct is to over-deliberate. For SEC, trust pattern recognition: if a sentence sounds wrong in a specific identifiable way, it is wrong. Name the rule, select the fix.',
+    },
+  },
+
+  eoi: {
+    total: 6,
+    label: 'Expression of Ideas',
+    questionCount: '~6 questions (EOI)',
+    base: {
+      what: 'Rhetorical synthesis and transition questions — requires understanding what a piece of writing is trying to accomplish, then choosing the sentence or word that best achieves it.',
+      why: 'EOI tests rhetorical awareness: not what is true, but what serves the writer\'s stated goal. Students who read broadly and write regularly have a natural advantage here.',
+      drills: [
+        'For rhetorical synthesis (notes) questions: read the stated goal first, then evaluate each answer choice against that goal specifically — not against what\'s most accurate or interesting.',
+        'For transition questions: identify the logical relationship in plain terms (agreement, contrast, cause, addition, example) before choosing a word.',
+        'Read opinion essays and editorials regularly. The rhetorical awareness that EOI tests is built through exposure to purposeful argumentative writing.',
+      ],
+      reading: ['The Economist — editorials', 'The New Yorker — essays', 'Project Syndicate — short opinion pieces'],
+      impact: 'EOI is ~6 questions. Transition questions in particular are pattern-based and highly recoverable with focused practice.',
+    },
+    oceanModifiers: {
+      O_high: 'The instinct to find the most interesting or intellectually rich answer works against you here — EOI wants the answer that best serves the stated rhetorical goal, which is often the most direct option.',
+      C_high: 'The structured approach transfers well to EOI. Treat each question as: identify goal → check each choice against goal → eliminate mismatches.',
+      O_low: 'Rhetorical synthesis requires thinking about writing as purposeful — which is learnable as a strategy. Focus on the stated goal in each question stem; it always tells you exactly what the correct answer needs to do.',
+    },
+  },
+
+  algebra: {
+    total: 5,
+    label: 'Algebra',
+    questionCount: 'Algebra (5 questions)',
+    base: {
+      what: 'Linear equations, systems of equations, and algebraic word problems.',
+      why: 'Algebra errors on the SAT typically come from equation setup, not computation. Students who rush into calculating before setting up the equation correctly lose recoverable points.',
+      drills: [
+        'For word problems, write the equation before doing any arithmetic. Slow down at the setup step — this is where the error happens.',
+        'For unit conversion problems (a consistent trap), always write out the units and cancel them explicitly before calculating.',
+        'Practice systems of equations with both substitution and elimination — the SAT uses both forms and the fastest method depends on the structure of the problem.',
+      ],
+      reading: [],
+      impact: 'Algebra is 5 questions. Setup errors are fast to fix with targeted drill — the computation itself is typically correct.',
+    },
+    oceanModifiers: {
+      C_low: 'The tendency to skip setup steps and move quickly to calculation is the primary algebra error pattern. One rule: write the equation first, calculate second, every time.',
+      N_high: 'After a missed algebra question, the instinct is to doubt your arithmetic. Usually the error is earlier — at the equation setup stage. Review setup first, then computation.',
+    },
+  },
+
+  advanced_math: {
+    total: 4,
+    label: 'Advanced Math',
+    questionCount: 'Advanced Math (4 questions)',
+    base: {
+      what: 'Quadratics, polynomials, exponents, and function operations.',
+      why: 'Advanced math questions are the highest-difficulty math questions on the test and require fluency with algebraic manipulation, not just formula recall.',
+      drills: [
+        'Factoring fluency is foundational — practice factoring quadratics and recognizing difference-of-squares and perfect-square trinomials on sight.',
+        'For function questions, substitute concrete numbers to verify your answer before moving on.',
+        'Exponent and radical rules need to be automatic. Drill the six core rules (product, quotient, power, zero, negative, fractional) until they require no conscious recall.',
+      ],
+      reading: [],
+      impact: 'Advanced Math is 4 questions — a small but high-difficulty domain. Improving here often signals general math confidence gains.',
+    },
+    oceanModifiers: {
+      O_high: 'The conceptual understanding is likely there — the gap is usually fluency and speed on manipulation steps. Drill for automaticity, not comprehension.',
+      C_low: 'Skipping intermediate steps is the main error pattern. Write out every manipulation step until the process is automatic — then abbreviate.',
+    },
+  },
+
+  psda: {
+    total: 6,
+    label: 'Problem Solving & Data Analysis',
+    questionCount: 'Problem Solving & Data Analysis (6 questions)',
+    base: {
+      what: 'Data interpretation, probability, statistics, and proportional reasoning.',
+      why: 'PSDA questions require reading data precisely and drawing only the conclusions the data supports — the same evidence-based logic as RW inference questions.',
+      drills: [
+        'For table and graph questions, read the axis labels and units before looking at the question. Most errors come from misreading what the data actually shows.',
+        'For probability questions, write out the sample space explicitly before calculating.',
+        'Practice ratio and proportion problems — these appear frequently and the errors are almost always in setup, not arithmetic.',
+      ],
+      reading: ['Quanta Magazine — data journalism pieces', 'Our World in Data — any chart-heavy article'],
+      impact: 'PSDA is 6 questions and one of the most improvable math domains — errors are systematic and correctable with targeted practice.',
+    },
+    oceanModifiers: {
+      N_high: 'Data interpretation under time pressure triggers the same late-module degradation seen elsewhere. Practice with a T-chart: label what each axis or column shows before reading questions. The structure reduces anxiety by turning ambiguity into procedure.',
+      O_high: 'The instinct to infer beyond the data is a consistent trap. PSDA rewards strict literalism — only conclude what the numbers directly show.',
+    },
+  },
+
+  geometry: {
+    total: 3,
+    label: 'Geometry',
+    questionCount: 'Geometry (3 questions)',
+    base: {
+      what: 'Circles, triangles, coordinate geometry, and area/volume.',
+      why: 'Geometry errors on the SAT are almost always formula recall failures or diagram misreading, not conceptual gaps.',
+      drills: [
+        'Memorize the formula sheet — but also know when to use each formula. The SAT provides formulas at the start of the math section; practice using them under time pressure.',
+        'Draw and label every geometry problem before solving. Visualization prevents the most common coordinate geometry errors.',
+        'Circle problems are the highest-frequency geometry type — prioritize arc length, sector area, and the circle equation (x−h)² + (y−k)² = r².',
+      ],
+      reading: [],
+      impact: 'Geometry is 3 questions — small domain, but each is recoverable with targeted formula drilling.',
+    },
+    oceanModifiers: {
+      C_low: 'Skipping the diagram step is the main geometry error pattern. Draw it every time, even when the problem seems simple.',
+      N_high: 'Geometry questions often appear late in the math module — the same late-module pressure that affects other question types. Practice geometry questions specifically in the last 5 of a timed set.',
+    },
+  },
 };

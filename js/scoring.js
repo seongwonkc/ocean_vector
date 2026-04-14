@@ -557,7 +557,121 @@ function generateReport(sessionData) {
     </div>
   </section>`;
 
-  // ── SECTION 4: Learning Blueprint ─────────────────────────────────────────
+  // ── SECTION 5: Priority Targets ───────────────────────────────────────────
+
+  // Build ranked domain list by performance rate (combined RW + Math)
+
+  const rwDomainRates = [
+    { key: 'craft_structure', correct: csTotal,  total: 16, rate: csTotal / 16 },
+    { key: 'info_ideas',      correct: iiTotal,  total: 14, rate: iiTotal / 14 },
+    { key: 'sec',             correct: secTotal, total: 4,  rate: secTotal / 4  },
+    { key: 'eoi',             correct: eoiTotal, total: 6,  rate: eoiTotal / 6  },
+  ];
+
+  const mathDomainRates = [
+    { key: 'algebra',       correct: mathDomains.algebra.c,       total: mathDomains.algebra.t,       rate: mathDomains.algebra.t > 0       ? mathDomains.algebra.c / mathDomains.algebra.t             : 1 },
+    { key: 'advanced_math', correct: mathDomains.advanced_math.c, total: mathDomains.advanced_math.t, rate: mathDomains.advanced_math.t > 0 ? mathDomains.advanced_math.c / mathDomains.advanced_math.t : 1 },
+    { key: 'psda',          correct: mathDomains.psda.c,          total: mathDomains.psda.t,          rate: mathDomains.psda.t > 0          ? mathDomains.psda.c / mathDomains.psda.t                   : 1 },
+    { key: 'geometry',      correct: mathDomains.geometry.c,      total: mathDomains.geometry.t,      rate: mathDomains.geometry.t > 0      ? mathDomains.geometry.c / mathDomains.geometry.t           : 1 },
+  ];
+
+  // Sort each section worst-first, pick top 2 RW + top 1 Math
+  const sortedRW   = [...rwDomainRates].sort((a, b) => a.rate - b.rate);
+  const sortedMath = [...mathDomainRates].sort((a, b) => a.rate - b.rate);
+
+  // Pick targets: worst 2 RW + worst math domain (if below 70%)
+  const targets = [];
+  sortedRW.slice(0, 2).forEach(d => targets.push({ ...d, section: 'RW' }));
+  if (sortedMath[0].rate < 0.7) targets.push({ ...sortedMath[0], section: 'Math' });
+
+  function buildOceanModifier(domainKey, oceanScores) {
+    const presc = DOMAIN_PRESCRIPTIONS[domainKey];
+    if (!presc || !presc.oceanModifiers) return null;
+    const mods = presc.oceanModifiers;
+
+    // Check profile traits in priority order
+    const checks = [
+      { key: 'N_high', applies: classifyTrait(oceanScores.N, 'N') === 'high' || moderateToExtreme(oceanScores.N, 'N') === 'high' },
+      { key: 'O_high', applies: classifyTrait(oceanScores.O, 'O') === 'high' || moderateToExtreme(oceanScores.O, 'O') === 'high' },
+      { key: 'C_low',  applies: classifyTrait(oceanScores.C, 'C') === 'low'  || moderateToExtreme(oceanScores.C, 'C') === 'low'  },
+      { key: 'C_high', applies: classifyTrait(oceanScores.C, 'C') === 'high' || moderateToExtreme(oceanScores.C, 'C') === 'high' },
+      { key: 'O_low',  applies: classifyTrait(oceanScores.O, 'O') === 'low'  || moderateToExtreme(oceanScores.O, 'O') === 'low'  },
+    ];
+    for (const c of checks) {
+      if (c.applies && mods[c.key]) return mods[c.key];
+    }
+    return null;
+  }
+
+  function renderTarget(target, rank) {
+    const presc  = DOMAIN_PRESCRIPTIONS[target.key];
+    if (!presc) return '';
+    const pct    = Math.round(target.rate * 100);
+    const missed = target.total - target.correct;
+    const modifier = buildOceanModifier(target.key, oceanScores);
+    const rankLabel = ['#1 Priority', '#2 Priority', '#3 Priority'][rank] || `#${rank+1} Priority`;
+    const urgencyColor = pct < 40 ? 'var(--danger-light)' : pct < 65 ? '#E8A030' : 'var(--blue-light)';
+
+    const drillItems = presc.base.drills.map(d =>
+      `<li style="padding:6px 0 6px 16px;position:relative;font-size:13.5px;color:var(--text-muted);line-height:1.6;border-bottom:1px solid var(--border);"><span style="position:absolute;left:0;color:var(--gold);">›</span>${d}</li>`
+    ).join('');
+
+    const readingItems = presc.base.reading.length > 0
+      ? `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+           <div style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Recommended Reading</div>
+           <div style="display:flex;flex-wrap:wrap;gap:6px;">
+             ${presc.base.reading.map(r => `<span style="font-size:12px;padding:3px 10px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:4px;color:var(--text-muted);">${r}</span>`).join('')}
+           </div>
+         </div>`
+      : '';
+
+    const modifierHtml = modifier
+      ? `<div style="margin-top:14px;padding:12px 14px;background:rgba(201,165,90,0.08);border:1px solid var(--gold-dim);border-radius:4px;">
+           <div style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;">Your Profile — ${profileCode}</div>
+           <p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0;">${modifier}</p>
+         </div>`
+      : '';
+
+    return `
+  <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px 28px;margin-bottom:16px;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:12px;">
+      <div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;">${rankLabel} · ${target.section}</div>
+        <div style="font-family:var(--font-display);font-size:20px;font-weight:600;color:var(--text);">${presc.label}</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:3px;">${presc.questionCount}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div style="font-family:var(--font-display);font-size:32px;font-weight:600;color:${urgencyColor};line-height:1;">${target.correct}/${target.total}</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">${pct}% · ${missed} missed</div>
+      </div>
+    </div>
+
+    <p style="font-size:14px;color:var(--text);line-height:1.65;margin-bottom:8px;"><strong>The gap:</strong> ${presc.base.what}</p>
+    <p style="font-size:13.5px;color:var(--text-muted);line-height:1.65;margin-bottom:16px;">${presc.base.why}</p>
+
+    <div style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Practice Targets</div>
+    <ul style="list-style:none;padding:0;margin:0 0 4px;">${drillItems}</ul>
+
+    ${readingItems}
+    ${modifierHtml}
+
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text-dim);font-style:italic;">${presc.base.impact}</div>
+  </div>`;
+  }
+
+  const targetBlocks = targets.map((t, i) => renderTarget(t, i)).join('');
+
+  const s5 = `
+  <section class="report-section" id="section-5">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <h2>Priority Targets</h2>
+    </div>
+    <p style="font-size:14px;color:var(--text-muted);margin-bottom:24px;line-height:1.7;">
+      Ranked by a combination of score gap and recoverability. Each target includes a practice prescription calibrated to your OCEAN profile — not generic advice, but the specific approach that works for how you study.
+    </p>
+    ${targetBlocks || '<p style="color:var(--text-dim);font-size:14px;">Strong performance across all domains — no critical gaps identified. Focus on consistency and full-length mock practice.</p>'}
+  </section>`;
   const s4 = `
   <section class="report-section" id="section-4">
     <div class="section-header">
@@ -600,7 +714,7 @@ function generateReport(sessionData) {
         <span>${sessionDate ? new Date(sessionDate).toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'}) : ''}</span>
       </div>
     </div>
-    ${s1}${s2}${s3}${s4}
+    ${s1}${s2}${s3}${s4}${s5}
     <div class="report-footer">
       <p>VECTOR | Powered by OCEAN | Consultant Use Only — Do Not Share Before Session</p>
     </div>
