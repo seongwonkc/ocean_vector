@@ -9,10 +9,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"
     onload="document.dispatchEvent(new Event('katexReady'))"></script>
-  <script>
-    window.SUPABASE_URL      = 'https://havatrfyuqqbidleplcf.supabase.co';
-    window.SUPABASE_ANON_KEY = 'sb_publishable_3v9CidUkG8p1tD_rWVcD-Q_CkZtoKAw';
-  </script>
+  <script src="config.js"></script>
 </head>
 <body>
 
@@ -481,6 +478,38 @@ function toggleCalc() {
 
 // ── Confirmation ─────────────────────────────────────────────────────────────
 function htmlConfirmation() {
+  // Dev mode: render the full report inline
+  if (IS_DEV && S.profileCode && S.oceanScores) {
+    let reportHtml = '';
+    try {
+      reportHtml = generateReport({
+        studentName: S.studentName || 'Demo Student',
+        currentScore: S.currentScore, targetScore: S.targetScore,
+        testDate: S.testDate, weeklyStudyHours: S.weeklyStudyHours,
+        personalityResponses: S.personalityResponses,
+        rw1Responses: S.rw1Responses, rw1Score: S.rw1Score,
+        moduleType: S.moduleType || 'easy',
+        rw2Responses: S.rw2Responses, rw2Score: S.rw2Score,
+        mathResponses: S.mathResponses, mathScore: S.mathScore,
+        behavioralData: S.behavioralData,
+        oceanScores: S.oceanScores, profileCode: S.profileCode,
+        sessionDate: new Date().toISOString(),
+      });
+    } catch(e) {
+      reportHtml = `<p style="color:red;">Report error: ${esc(e.message)}</p>`;
+    }
+    return `
+<div style="max-width:900px;margin:0 auto;padding:32px 24px 64px;">
+  <div style="background:#FFF8E1;border:1.5px solid #FFD54F;border-radius:6px;padding:10px 16px;margin-bottom:28px;display:flex;align-items:center;justify-content:space-between;">
+    <span style="font-size:12px;font-weight:700;letter-spacing:0.1em;color:#F57C00;">⚡ DEV MODE — ${S.profileCode} preview (not saved)</span>
+    <button class="bb-btn" style="font-size:12px;padding:4px 12px;" onclick="window.location.reload()">← New Demo</button>
+  </div>
+  <link rel="stylesheet" href="css/styles.css">
+  ${reportHtml}
+</div>`;
+  }
+
+  // Normal confirmation screen
   return `
 <div class="bb-confirm">
   <div class="bb-confirm-icon">✓</div>
