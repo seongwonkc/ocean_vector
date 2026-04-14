@@ -112,7 +112,7 @@ const RW1_QUESTIONS = [
   {
     id: 'rw1_q4', num: 4, type: 'structure', domain: 'craft_structure',
     signal: 'O', highSignal: false,
-    passage: 'For decades, researchers studying soil microbiomes assumed that bacterial colonies competed primarily through nutrient depletion — the idea that bacteria simply outcompete rivals by consuming available resources. In 2018, however, a new study challenged this view: researchers discovered that certain bacterial colonies produce chemical signals that actively inhibit the growth of competing species. The findings suggest that direct chemical interference is at least as important as resource competition in shaping microbial communities.',
+    passage: 'In 2018, researchers studying soil microbiomes discovered that certain bacterial colonies produce chemical signals that inhibit the growth of competing species. Earlier studies had focused primarily on competition through nutrient depletion — the idea that bacteria simply outcompete rivals by consuming available resources. The new findings suggest, however, that direct chemical interference is at least as important as resource competition in shaping microbial communities.',
     table: null, underline: null,
     question: 'Which choice best describes the overall structure of the text?',
     choices: {
@@ -605,10 +605,10 @@ const RW2_EASY_QUESTIONS = [
   {
     id: 'rw2e_q16', num: 16, type: 'sec', domain: 'sec',
     signal: null, highSignal: false,
-    passage: 'The James Webb Space Telescope, launched in December 2021, has produced images of galaxies that formed just a few hundred million years after the _______ giving scientists their clearest view yet of the early universe.',
+    passage: 'The James Webb Space Telescope, launched in December 2021, has produced images of galaxies that formed just a few hundred million years after the Big Bang _______ giving scientists their clearest view yet of the early universe.',
     table: null, underline: null,
     question: 'Which choice completes the text so that it conforms to the conventions of Standard English?',
-    choices: { A: 'Big Bang, giving', B: 'Big Bang; giving', C: 'Big Bang: giving', D: 'Big Bang — giving' },
+    choices: { A: ',', B: ';', C: ':', D: '—' },
     answer: 'A', isSPR: false
   },
   {
@@ -1157,9 +1157,9 @@ const PROFILES = {
     pressureManagement: 'Low intervention needed. Simulate harder conditions than the real test. They tend to underestimate how much timed pressure affects mechanical accuracy. One full-length mock under strict conditions early in the engagement is useful as calibration.',
     sectionThree: {
       patterns: [
-        'Inference and dual-text question performance will likely exceed overall score — verbal reasoning tends to be a strength for this profile.',
-        'The behavioral data will probably show efficient pacing early in each module with slower responses on mechanical questions — SEC and grammar tend to require more effort than the reasoning work.',
-        'Time remaining at test end will be average or high — but watch for careless errors on mechanics, not missed questions.'
+        'Inference and dual-text performance tends to run above the overall score for this profile — verbal reasoning is typically a strength.',
+        'Pacing tends to be efficient early in each module, with slower engagement on mechanical questions — SEC and grammar take more effort than the reasoning work.',
+        'Time remaining at the end of timed modules tends to be average or above — careless errors on mechanics are a more common issue than incomplete modules.'
       ],
       primaryGap: 'The gap is usually not reasoning but precision on high-speed mechanical execution.'
     }
@@ -1175,9 +1175,9 @@ const PROFILES = {
     pressureManagement: 'Central to the whole engagement. Introduce a between-section reset protocol — a specific 30-second routine. Reframe mistakes during practice as data collection. The goal is desensitization to difficulty, not elimination of mistakes.',
     sectionThree: {
       patterns: [
-        'Inference question scores are likely above the overall average — the reasoning ability is real. The score gap shows up in timed execution, not comprehension.',
-        'The behavioral data will show a dwell-time spike pattern: performance dips late in each module, consistent with how high-performing students respond to sustained pressure.',
-        'Answer change rate will be above average — especially in the second half of each module. This is rumination under pressure, not uncertainty about content.'
+        'Inference scores tend to run above the overall average for this profile — the reasoning is real. When a gap exists, it shows up in timed execution, not comprehension.',
+        'Performance tends to dip late in each module — dwell-time spikes after hard questions are a characteristic pattern for students who respond strongly to sustained pressure.',
+        'Answer change rate tends to be elevated in the second half of modules — this is rumination under pressure, not uncertainty about content.'
       ],
       primaryGap: 'The gap is pressure management. This is the primary intervention before any content work.'
     }
@@ -1193,9 +1193,9 @@ const PROFILES = {
     pressureManagement: 'Low need. The risk is complacency, not anxiety. Introduce mild competitive framing if appropriate. Don\'t over-structure the pressure management layer or it becomes another thing they don\'t do.',
     sectionThree: {
       patterns: [
-        'Performance on inference and conceptually rich questions will likely exceed SEC and algebra performance — the intellectual engagement is high, but sustained attention on mechanical work drops off.',
-        'Pacing data will show fast initial responses followed by slower engagement late in modules — attention drift, not difficulty.',
-        'Low answer change rate suggests confidence (appropriate or not) — not second-guessing, which is a strength in timed conditions.'
+        'Performance on inference and conceptually rich questions tends to exceed SEC and algebra performance — intellectual engagement is high, but sustained attention on mechanical work drops off.',
+        'Pacing tends to be fast early with slower engagement late in modules — attention drift is the characteristic pattern, not difficulty.',
+        'Answer change rate tends to be low — not second-guessing is a strength in timed conditions, though it can mask unforced errors.'
       ],
       primaryGap: 'The gap is consistency and follow-through on mechanical question types. Build the habit architecture, not the reasoning.'
     }
@@ -1211,9 +1211,9 @@ const PROFILES = {
     pressureManagement: 'Priority one before content. Introduce a daily low-stakes check-in routine. Normalize difficulty explicitly and repeatedly. The goal for the first two weeks is not score improvement — it\'s showing up consistently.',
     sectionThree: {
       patterns: [
-        'Inference and dual-text performance will likely show the strongest results — the conceptual ability is real and visible even under pressure.',
-        'The behavioral data will show high dwell times across the board with significant answer change rates — rumination is the main pattern, not lack of knowledge.',
-        'Time management data may show incomplete modules or late rushes — not because the questions are too hard, but because of processing loops on individual items.'
+        'Inference and dual-text performance tends to show relative strength for this profile — the conceptual ability is real, though pressure affects consistency.',
+        'Dwell times tend to be elevated across the board, with significant answer change rates — rumination is the characteristic pattern, not lack of knowledge.',
+        'Time management tends to show late-module rushes or incomplete sections — not because questions are too hard, but because of processing loops on individual items.'
       ],
       primaryGap: 'Breaking the avoidance-anxiety cycle is the first deliverable. Score improvement follows from that, not the other way around.'
     }
@@ -1229,9 +1229,9 @@ const PROFILES = {
     pressureManagement: 'Low need. May need to teach strategic skipping explicitly — perfectionism around completion can hurt timing on test day.',
     sectionThree: {
       patterns: [
-        'SEC grammar and algebra performance will likely be among the strongest scores — these are domains where consistent execution wins.',
-        'Inference, dual-text, and conceptually open questions will show the largest gap relative to overall performance — this is the primary content ceiling.',
-        'Pacing data will show consistent timing across questions with low variance — a strength on test day, but watch for time lost on hard inference items where a skip would be more strategic.'
+        'SEC grammar and algebra tend to be the strongest domains for this profile — consistent execution on procedural work is a genuine asset.',
+        'Inference, dual-text, and conceptually open questions tend to show the largest gap relative to overall performance — this is the primary content ceiling.',
+        'Pacing tends to be consistent across questions with low variance — a real advantage on test day, though time lost on hard inference items (instead of skipping) is worth monitoring.'
       ],
       primaryGap: 'Inference and "what does this suggest" question types. The procedural approach needs to be extended into ambiguous territory.'
     }
@@ -1247,9 +1247,9 @@ const PROFILES = {
     pressureManagement: 'Central concern. Performance degrades in the final third of each section. Target interventions specifically at the last 5 questions of every module under time pressure. Build confidence in the endgame.',
     sectionThree: {
       patterns: [
-        'Grammar and algebra scores will likely reflect the preparation — the mechanical work is there. The gap shows up in inference and open-ended questions.',
-        'Dwell time will increase significantly in the second half of each module — performance degradation in the endgame is the primary signal.',
-        'Answer change rate will spike late in each module, especially on inference questions — this is anxiety-driven, not content-driven.'
+        'Grammar and algebra scores tend to reflect preparation level — the mechanical work is typically solid. The gap tends to show up in inference and open-ended questions.',
+        'Dwell time tends to increase in the second half of each module — performance degradation in the endgame is the characteristic signal for this profile.',
+        'Answer change rate tends to spike late in each module, especially on inference questions — this is anxiety-driven, not content-driven.'
       ],
       primaryGap: 'The final third of each module. The preparation is real; the endgame execution is the target.'
     }
@@ -1265,9 +1265,9 @@ const PROFILES = {
     pressureManagement: 'Low anxiety = low urgency. Mild external accountability structures help: check-ins, visible progress tracking, parent visibility into session goals.',
     sectionThree: {
       patterns: [
-        'The score profile will likely show relatively even distribution across question types — no strong domain, but no catastrophic weak area either.',
-        'Pacing will be fast with low dwell time across the board — questions are being processed but not engaged with deeply.',
-        'Low answer change rate combined with low accuracy signals guessing or disengagement, not confident wrong answers.'
+        'Score distribution tends to be relatively even across question types for this profile — no dominant strength, but typically no catastrophic weak area either.',
+        'Pacing tends to be fast with low dwell time across the board — questions are being processed but not engaged with deeply.',
+        'Low answer change rate combined with low accuracy signals guessing or disengagement — not confident wrong answers.'
       ],
       primaryGap: 'Engagement is the primary variable. Content gaps will become measurable once engagement is established.'
     }
@@ -1283,9 +1283,9 @@ const PROFILES = {
     pressureManagement: 'Priority one, weeks one through three. No timed practice until anxiety is visibly reduced. No full-length mocks early in the engagement. The score will not improve until the student believes improvement is possible — that belief is the first deliverable.',
     sectionThree: {
       patterns: [
-        'Performance across all question types will tend to be suppressed — not because of content gaps, but because anxiety affects retrieval and execution simultaneously.',
-        'Dwell time will be high throughout, with the highest spikes on inference and open-ended questions — these feel most exposed because there\'s no procedure to fall back on.',
-        'Answer change rate may be paradoxically low — not from confidence, but from shutdown (first answer locked in, subsequent thinking avoided).'
+        'Performance across all question types tends to be suppressed for this profile — not because of content gaps, but because anxiety affects retrieval and execution simultaneously.',
+        'Dwell time tends to be elevated throughout, with the highest spikes on inference and open-ended questions — these feel most exposed because there is no procedure to fall back on.',
+        'Answer change rate can be paradoxically low — not from confidence, but from shutdown (first answer locked in, subsequent thinking avoided).'
       ],
       primaryGap: 'Belief that improvement is possible is the first deliverable. Everything else follows from that.'
     }
