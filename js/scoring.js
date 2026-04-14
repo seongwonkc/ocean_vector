@@ -610,53 +610,53 @@ function generateReport(sessionData) {
     const missed = target.total - target.correct;
     const modifier = buildOceanModifier(target.key, oceanScores);
     const rankLabel = ['#1 Priority', '#2 Priority', '#3 Priority'][rank] || `#${rank+1} Priority`;
-    const urgencyColor = pct < 40 ? 'var(--danger-light)' : pct < 65 ? '#E8A030' : 'var(--blue-light)';
+    const urgencyColor = pct < 40 ? 'var(--danger)' : pct < 65 ? '#C07010' : 'var(--blue)';
 
-    const drillItems = presc.base.drills.map(d =>
-      `<li style="padding:6px 0 6px 16px;position:relative;font-size:13.5px;color:var(--text-muted);line-height:1.6;border-bottom:1px solid var(--border);"><span style="position:absolute;left:0;color:var(--gold);">›</span>${d}</li>`
+    const drillRows = presc.base.drills.map(d =>
+      `<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--border-light);">
+         <span style="color:var(--blue);font-size:14px;flex-shrink:0;line-height:1.6;">›</span>
+         <span style="font-size:13.5px;color:var(--text-muted);line-height:1.6;">${d}</span>
+       </div>`
     ).join('');
 
-    const readingItems = presc.base.reading.length > 0
-      ? `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
-           <div style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Recommended Reading</div>
-           <div style="display:flex;flex-wrap:wrap;gap:6px;">
-             ${presc.base.reading.map(r => `<span style="font-size:12px;padding:3px 10px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:4px;color:var(--text-muted);">${r}</span>`).join('')}
-           </div>
+    const readingHtml = presc.base.reading.length > 0
+      ? `<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
+           <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;">Recommended Reading</div>
+           <div style="display:flex;flex-wrap:wrap;gap:6px;">${presc.base.reading.map(r =>
+             `<span style="font-size:12px;padding:3px 10px;background:var(--bg-surface);border:1px solid var(--border);border-radius:4px;color:var(--text-muted);">${r}</span>`
+           ).join('')}</div>
          </div>`
       : '';
 
     const modifierHtml = modifier
-      ? `<div style="margin-top:14px;padding:12px 14px;background:rgba(201,165,90,0.08);border:1px solid var(--gold-dim);border-radius:4px;">
-           <div style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;">Your Profile — ${profileCode}</div>
-           <p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0;">${modifier}</p>
+      ? `<div style="margin-top:14px;padding:12px 14px;background:rgba(0,119,200,0.05);border:1.5px solid rgba(0,119,200,0.2);border-radius:6px;">
+           <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--blue);margin-bottom:6px;">Your Profile — ${profileCode}</div>
+           <div style="font-size:13px;color:var(--text-muted);line-height:1.6;">${modifier}</div>
          </div>`
       : '';
 
-    return `
-  <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px 28px;margin-bottom:16px;">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:12px;">
-      <div>
-        <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;">${rankLabel} · ${target.section}</div>
-        <div style="font-family:var(--font-display);font-size:20px;font-weight:600;color:var(--text);">${presc.label}</div>
-        <div style="font-size:12px;color:var(--text-dim);margin-top:3px;">${presc.questionCount}</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0;">
-        <div style="font-family:var(--font-display);font-size:32px;font-weight:600;color:${urgencyColor};line-height:1;">${target.correct}/${target.total}</div>
-        <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">${pct}% · ${missed} missed</div>
-      </div>
+    return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px 28px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:12px;">
+    <div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--blue);margin-bottom:5px;">${rankLabel} · ${target.section}</div>
+      <div style="font-family:var(--font-display);font-size:20px;font-weight:600;color:var(--text);line-height:1.2;">${presc.label}</div>
+      <div style="font-size:12px;color:var(--text-dim);margin-top:4px;">${presc.questionCount}</div>
     </div>
-
-    <p style="font-size:14px;color:var(--text);line-height:1.65;margin-bottom:8px;"><strong>The gap:</strong> ${presc.base.what}</p>
-    <p style="font-size:13.5px;color:var(--text-muted);line-height:1.65;margin-bottom:16px;">${presc.base.why}</p>
-
-    <div style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Practice Targets</div>
-    <ul style="list-style:none;padding:0;margin:0 0 4px;">${drillItems}</ul>
-
-    ${readingItems}
-    ${modifierHtml}
-
-    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text-dim);font-style:italic;">${presc.base.impact}</div>
-  </div>`;
+    <div style="text-align:right;flex-shrink:0;">
+      <div style="font-family:var(--font-display);font-size:32px;font-weight:700;color:${urgencyColor};line-height:1;">${target.correct}/${target.total}</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">${pct}% &middot; ${missed} missed</div>
+    </div>
+  </div>
+  <div style="padding:14px 16px;background:var(--bg-surface);border-radius:6px;margin-bottom:16px;">
+    <div style="font-size:13.5px;color:var(--text);line-height:1.65;margin-bottom:6px;"><strong>The gap:</strong> ${presc.base.what}</div>
+    <div style="font-size:13px;color:var(--text-muted);line-height:1.65;">${presc.base.why}</div>
+  </div>
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;">Practice Targets</div>
+  <div style="border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--bg);">${drillRows}</div>
+  ${readingHtml}
+  ${modifierHtml}
+  <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border-light);font-size:12px;color:var(--text-dim);font-style:italic;">${presc.base.impact}</div>
+</div>`;
   }
 
   const targetBlocks = targets.map((t, i) => renderTarget(t, i)).join('');
