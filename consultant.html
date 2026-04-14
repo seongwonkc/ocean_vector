@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VECTOR | Consultant Dashboard</title>
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles-consultant.css">
+  <link rel="stylesheet" href="css/styles-report.css">
 
-  <script src="config.js"></script>
-</head>
+<script src="config.js"></script></head>
 <body>
 
 <!-- Progress bar (static at 100% for consultant view) -->
@@ -29,7 +29,7 @@
 'use strict';
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-const CONSULTANT_PASSWORD = 'VECTOR2024';  // ← Kevin: change this before sharing
+const CONSULTANT_PASSWORD = '1234';  // ← Kevin: change this before sharing
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
 const CS = {
@@ -199,7 +199,7 @@ function htmlReport(dbSession) {
   }
 
   return `
-<div style="padding:32px 32px 48px;">
+<div style="padding:32px 32px 48px;background:#F7F8FA;min-height:100%">
   <div class="report-container">
     <div class="report-header">
       <div>
@@ -262,7 +262,7 @@ async function loadSessions() {
   } else if (result.error === 'not_configured') {
     // Supabase not yet configured — show placeholder data for UI testing
     CS.sessions  = [];
-    CS.loadError = 'Supabase is not configured. Replace https://havatrfyuqqbidleplcf.supabase.co and sb_publishable_3v9CidUkG8p1tD_rWVcD-Q_CkZtoKAw in both HTML files, then reload.';
+    CS.loadError = 'Supabase is not configured. Replace YOUR_SUPABASE_URL and YOUR_ANON_KEY in both HTML files, then reload.';
   } else {
     CS.sessions = result.data || [];
     // Re-select if the previously selected session still exists
