@@ -9,6 +9,8 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"
     onload="document.dispatchEvent(new Event('katexReady'))"></script>
+  <!-- SUPABASE -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
 </head>
 <body>
@@ -27,6 +29,61 @@
 <script src="js/scoring.js"></script>
 <script>
 'use strict';
+
+// ── Supabase ─────────────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://havatrfyuqqbidleplcf.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_3v9CidUkG8p1tD_rWVcD-Q_CkZtoKAw';
+const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let currentUser = null;
+
+async function initAuth() {
+  const { data: { session } } = await _supabase.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+  } else {
+    S.view = 'login';
+  }
+  render();
+}
+
+_supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN' && session) {
+    currentUser = session.user;
+    if (S.view === 'login') {
+      S.view = 'intake';
+      render();
+    }
+  }
+  if (event === 'SIGNED_OUT') {
+    currentUser = null;
+    S.view = 'login';
+    render();
+  }
+});
+
+async function handleGoogleLogin() {
+  await _supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin + window.location.pathname }
+  });
+}
+
+async function saveSession(data) {
+  if (!currentUser) return;
+  const { error } = await _supabase
+    .from('students')
+    .upsert({
+      id: currentUser.id,
+      profile_N: data.oceanScores?.N ?? null,
+      profile_C: data.oceanScores?.C ?? null,
+      profile_O: data.oceanScores?.O ?? null,
+      profile_E: data.oceanScores?.E ?? null,
+      profile_A: data.oceanScores?.A ?? null,
+      assessment_completed: true,
+    }, { onConflict: 'id' });
+  if (error) console.error('Supabase save error:', error);
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 const S = {
   view: 'intake',
@@ -82,7 +139,6 @@ function updateTimerDisplay() {
     nav.classList.toggle('warn',     S.timerRemaining<=300 && S.timerRemaining>60);
     nav.classList.toggle('critical', S.timerRemaining<=60);
   }
-
 }
 function autoSubmitModule() {
   const inp = document.getElementById('spr-input');
@@ -122,16 +178,17 @@ function esc(s) {
 }
 
 // Progress
-const VIEW_IDX={intake:0,personality:1,rw1:2,rw2:3,math:4,done:5};
+const VIEW_IDX={login:-1,intake:0,personality:1,rw1:2,rw2:3,math:4,done:5};
 const STEP_NAMES=['Getting Started','Learning Profile','Reading & Writing I','Reading & Writing II','Math','Complete'];
 const MODULE_NAMES={rw1:'Reading & Writing · Module 1',rw2:'Reading & Writing · Module 2',math:'Math · Final Module'};
 
 function updateProgress() {
   const idx=VIEW_IDX[S.view]??0;
   const bar=document.getElementById('progress-bar');
-  if(bar) bar.style.width=((idx/5)*100)+'%';
+  if(bar) bar.style.width=(idx<0?0:(idx/5)*100)+'%';
   const lbl=document.getElementById('nav-label');
   if(!lbl) return;
+  if(S.view==='login'){ lbl.innerHTML=''; return; }
   const isActive=['rw1','rw2','math'].includes(S.view)&&S.modulePhase==='active';
   if(isActive) {
     const qs=getModuleQuestions();
@@ -147,14 +204,27 @@ function render() {
   const app=document.getElementById('app');
   if(!app) return;
   const isTest=['rw1','rw2','math'].includes(S.view);
-  if     (S.view==='intake')                         app.innerHTML=htmlIntake();
-  else if(S.view==='personality')                    app.innerHTML=htmlPersonality();
-  else if(isTest&&S.modulePhase==='intro')           app.innerHTML=htmlModuleIntro();
-  else if(isTest&&S.modulePhase==='active')          app.innerHTML=htmlQuestion();
-  else if(S.view==='done')                           app.innerHTML=htmlConfirmation();
+  if     (S.view==='login')                             app.innerHTML=htmlLogin();
+  else if(S.view==='intake')                            app.innerHTML=htmlIntake();
+  else if(S.view==='personality')                       app.innerHTML=htmlPersonality();
+  else if(isTest&&S.modulePhase==='intro')              app.innerHTML=htmlModuleIntro();
+  else if(isTest&&S.modulePhase==='active')             app.innerHTML=htmlQuestion();
+  else if(S.view==='done')                              app.innerHTML=htmlConfirmation();
   bindEvents();
   renderKatex();
   window.scrollTo(0,0);
+}
+
+// ── Login ────────────────────────────────────────────────────────────────────
+function htmlLogin() {
+  return `
+<div class="bb-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;">
+  <div class="bb-title" style="margin-bottom:8px;">VECTOR</div>
+  <div class="bb-subtitle" style="max-width:400px;margin:0 auto 40px;">Personality-driven SAT prep.<br>Sign in to begin your assessment.</div>
+  <button class="bb-btn bb-btn-primary bb-btn-lg" id="btn-google-login">
+    Continue with Google
+  </button>
+</div>`;
 }
 
 // ── Intake ──────────────────────────────────────────────────────────────────
@@ -163,11 +233,8 @@ const IS_DEV = new URLSearchParams(window.location.search).get('dev') === '1';
 const DEMO_PROFILES = ['OCN','OCn','Ocn','OcN','oCn','oCN','ocn','ocN'];
 
 function runDemo(profileCode) {
-  // Fill fake intake
   S.studentName='Demo Student'; S.currentScore='1180'; S.targetScore='1450';
   S.testDate='2026-08-01'; S.weeklyStudyHours='3-5';
-
-  // Fill personality to match profile
   const fakeOcean = {
     OCN:{ O:9, C:9, N:8, E:2, A:1 },
     OCn:{ O:9, C:9, N:2, E:2, A:1 },
@@ -180,26 +247,18 @@ function runDemo(profileCode) {
   };
   S.oceanScores = fakeOcean[profileCode] || fakeOcean['OCN'];
   S.profileCode  = profileCode;
-
-  // Fake personality responses (pair 1 → O for all O profiles, etc.)
   PERSONALITY_PAIRS.forEach(p => { S.personalityResponses[p.id] = 'A'; });
-
-  // Fake test responses — plausible scores
   S.moduleType = 'easy';
   RW1_QUESTIONS.forEach((q,i) => { S.rw1Responses[q.id]  = i < 12 ? q.answer : (q.choices ? 'A' : '5'); });
   RW2_EASY_QUESTIONS.forEach((q,i) => { S.rw2Responses[q.id] = i < 14 ? q.answer : (q.choices ? 'A' : '5'); });
   MATH_QUESTIONS.forEach((q,i) => { S.mathResponses[q.id]  = i < 8  ? q.answer : (q.isSPR ? '5' : 'A'); });
-
   S.rw1Score  = scoreRWModule(S.rw1Responses, RW1_QUESTIONS);
   S.rw2Score  = scoreRWModule(S.rw2Responses, RW2_EASY_QUESTIONS);
   S.mathScore = scoreMathModule(S.mathResponses, MATH_QUESTIONS);
-
-  // Fake behavioral data
   const now = Date.now();
   [...RW1_QUESTIONS, ...RW2_EASY_QUESTIONS, ...MATH_QUESTIONS].forEach((q,i) => {
     S.behavioralData[q.id] = { T0: now + i*25000, T1: now + i*25000 + 3000, changes: [], T_final: now + i*25000 + 22000 };
   });
-
   S.view = 'done';
   render();
 }
@@ -344,7 +403,6 @@ function htmlQuestion() {
   const isMath=S.view==='math';
   const answeredCount=Object.values(responses).filter(v=>v!==undefined&&v!==null&&v!=='').length;
 
-  // Passage
   let passageHtml='';
   if(q.dualText) {
     passageHtml=`
@@ -379,7 +437,6 @@ function htmlQuestion() {
     ${q.table.replace(/class="data-table"/g,'class="bb-data-table"')}`;
   }
 
-  // Answers
   let answerHtml='';
   if(q.isSPR) {
     answerHtml=`
@@ -400,7 +457,6 @@ function htmlQuestion() {
     </div>`;
   }
 
-  // Dots
   const dots=questions.map((qq,i)=>{
     const ans=responses[qq.id];
     const cls=i===S.qIndex?'current':(ans!==undefined&&ans!==null&&ans!=='')?'answered':'';
@@ -427,7 +483,6 @@ function htmlQuestion() {
   const dotsStrip=`<div class="bb-dots-strip">${dots}</div>`;
   const calcBtn = isMath ? `<button class="bb-btn bb-btn-ghost" id="btn-calc" onclick="toggleCalc()" style="font-size:12px;padding:6px 12px;">🖩 Calculator</button>` : '';
 
-  // Math or no-passage: single column
   if(isMath || !passageHtml) {
     const stem=q.text||q.question||'';
     return `
@@ -453,7 +508,6 @@ function htmlQuestion() {
 </div>`;
   }
 
-  // Split pane
   return `
 <div class="bb-question-layout">
   <div class="bb-left-panel">${passageHtml}</div>
@@ -478,7 +532,6 @@ function toggleCalc() {
 
 // ── Confirmation ─────────────────────────────────────────────────────────────
 function htmlConfirmation() {
-  // Dev mode: render the full report inline
   if (IS_DEV && S.profileCode && S.oceanScores) {
     let reportHtml = '';
     try {
@@ -511,7 +564,6 @@ function htmlConfirmation() {
 </div>`;
   }
 
-  // Normal confirmation screen
   return `
 <div class="bb-confirm">
   <div class="bb-confirm-icon">✓</div>
@@ -528,6 +580,10 @@ function htmlConfirmation() {
 function bindEvents() {
   const on   =(id,ev,fn)=>{ const el=document.getElementById(id); if(el) el.addEventListener(ev,fn); };
   const onAll=(sel,ev,fn)=>{ document.querySelectorAll(sel).forEach(el=>el.addEventListener(ev,fn)); };
+
+  if(S.view==='login') {
+    on('btn-google-login','click', handleGoogleLogin);
+  }
 
   if(S.view==='intake') {
     on('btn-intake-next','click',handleIntakeNext);
@@ -691,7 +747,8 @@ async function finishAssessment() {
   } catch(e) { console.error('Session save failed:',e); }
 }
 
-render();
+// ── Init ──────────────────────────────────────────────────────────────────────
+initAuth();
 </script>
 </body>
 </html>
