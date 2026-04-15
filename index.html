@@ -17,7 +17,6 @@
 </nav>
 
 <div id="app">
-  <!-- Replaced immediately by renderLogin() or redirected away -->
   <div style="display:flex;align-items:center;justify-content:center;min-height:60vh;">
     <div style="color:var(--text-dim);font-size:14px;letter-spacing:0.05em;">Loading…</div>
   </div>
@@ -30,10 +29,6 @@
 <script>
 'use strict';
 
-// ── Landing page renders login UI ─────────────────────────────────────────────
-// TODO: replace htmlLogin() with the real landing page design once decided.
-// Leading direction: lead with failure-mode diagnosis, not generic score promise.
-
 function renderLogin() {
   document.getElementById('app').innerHTML = `
 <div class="bb-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;">
@@ -45,24 +40,41 @@ function renderLogin() {
     Continue with Google
   </button>
 </div>`;
-
   document.getElementById('btn-google-login')
     .addEventListener('click', () => VectorDB.signInWithGoogle());
 }
 
-// ── Auth state change — fires after the Google OAuth redirect ─────────────────
-// User lands back on index.html with a fresh session.
+// Prevents init() and onAuthStateChange from racing to route simultaneously.
+let _routingStarted = false;
+
+// Fires after the Google OAuth redirect lands back on this page.
 VectorDB.onAuthStateChange(async (event, session) => {
-  if (event === 'SIGNED_IN' && session) {
+  if (event === 'SIGNED_IN' && session && !_routingStarted) {
+    _routingStarted = true;
     VectorApp.currentUser = session.user;
-    await VectorApp._routeAuthedUser(session.user.id);
+    try {
+      await VectorApp._routeAuthedUser(session.user.id);
+    } catch(e) {
+      console.error('[VECTOR] route error after sign-in:', e);
+      _routingStarted = false;
+      renderLogin();
+    }
   }
 });
 
-// ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
-  const redirected = await VectorApp.redirectIfAuthed();
-  if (!redirected) renderLogin();
+  _routingStarted = true;
+  try {
+    const redirected = await VectorApp.redirectIfAuthed();
+    if (!redirected) {
+      _routingStarted = false;
+      renderLogin();
+    }
+  } catch(e) {
+    console.error('[VECTOR] init error:', e);
+    _routingStarted = false;
+    renderLogin();
+  }
 }
 
 init();
