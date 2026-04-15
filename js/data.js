@@ -1522,8 +1522,8 @@ const DOMAIN_PRESCRIPTIONS = {
 
 const QUIZ_PAIRS = [
   { id: 'q1', traitA: 'O', traitB: 'C',
-    textA: 'When I get a wrong answer back, I want to understand exactly why — even if it takes extra time.',
-    textB: 'When I get a wrong answer back, I note the correction and move on to what I still need to cover.' },
+    textA: 'I enjoy exploring the theory behind why an answer is wrong.',
+    textB: 'I prioritize learning the correct method so I can move to the next task.' },
 
   { id: 'q2', traitA: 'C', traitB: 'N',
     textA: 'I set study goals at the start of the week and feel satisfied when I hit them.',
@@ -1531,15 +1531,15 @@ const QUIZ_PAIRS = [
 
   { id: 'q3', traitA: 'O', traitB: 'N',
     textA: 'When I hit a topic I don\'t recognize, my first instinct is curiosity.',
-    textB: 'When I hit a topic I don\'t recognize, my first instinct is to figure out how likely it is to show up on the test.' },
+    textB: 'When I hit a topic I don\'t recognize, I worry it\'s a sign I\'m not prepared enough.' },
 
   { id: 'q4', traitA: 'C', traitB: 'O',
     textA: 'I prefer to finish one topic completely before moving to the next.',
-    textB: 'I often follow a topic wherever it leads, even if it takes me off the planned path.' },
+    textB: 'I like making connections between the current topic and other things I\'ve learned.' },
 
   { id: 'q5', traitA: 'N', traitB: 'C',
-    textA: 'The night before a test, I keep thinking of things I didn\'t review well enough.',
-    textB: 'The night before a test, if I\'ve done my preparation, I can close my notes and rest.' },
+    textA: 'I use the night before a test to keep checking for gaps in my memory.',
+    textB: 'I trust my study schedule enough to stop reviewing and rest.' },
 
   { id: 'q6', traitA: 'O', traitB: 'C',
     textA: 'I\'m genuinely interested in why a formula or rule works, not just how to use it.',
@@ -1547,22 +1547,22 @@ const QUIZ_PAIRS = [
 
   { id: 'q7', traitA: 'N', traitB: 'O',
     textA: 'After a rough session, I tend to replay what went wrong for longer than is probably useful.',
-    textB: 'After a rough session, I\'m usually more interested in figuring out the pattern than dwelling on the result.' },
+    textB: 'After a rough session, I\'m quick to look for a new strategy to fix the problem.' },
 
   { id: 'q8', traitA: 'C', traitB: 'N',
     textA: 'I keep a reliable sense of what I\'ve covered and what still needs work.',
-    textB: 'I often feel behind, even when I\'ve objectively been putting in the hours.' },
+    textB: 'I often feel like I\'m falling behind, even when I\'m following my schedule.' },
 
-  { id: 'q9', traitA: 'O', traitB: 'N',
+  { id: 'q9', traitA: 'O', traitB: 'C',
     textA: 'When I\'m deep in something genuinely interesting, I lose track of time.',
-    textB: 'When I\'m studying, I\'m usually tracking time — making sure I\'m covering enough ground.' },
+    textB: 'I keep a close eye on the clock to make sure I don\'t spend too much time on one thing.' },
 
   { id: 'q10', traitA: 'N', traitB: 'C',
-    textA: 'My effort level goes up and down a lot based on how the last session went.',
+    textA: 'My motivation depends a lot on whether I feel like I\'m winning in that moment.',
     textB: 'My effort level stays roughly consistent regardless of whether my last session felt productive.' },
 
   { id: 'q11', traitA: 'C', traitB: 'E',
-    textA: 'I retain material better when I work through it alone, at my own pace.',
+    textA: 'I prefer a quiet environment where I can focus deeply on my own.',
     textB: 'I retain material better when I can explain it to someone else or talk through it.' },
 
   { id: 'q12', traitA: 'O', traitB: 'C',
@@ -1571,7 +1571,7 @@ const QUIZ_PAIRS = [
 
   { id: 'q13', traitA: 'N', traitB: 'A',
     textA: 'After a disappointing result, I usually need to work through it on my own before I feel okay.',
-    textB: 'After a disappointing result, I find it hard to move on until someone tells me it\'s going to be alright.' },
+    textB: 'After a disappointing result, I feel better once I\'ve talked it over with someone I trust.' },
 
   { id: 'q14', traitA: 'C', traitB: 'O',
     textA: 'I track my progress carefully — I can tell you at any point where I stand.',
@@ -1589,17 +1589,21 @@ const QUIZ_PAIRS = [
     textA: 'I prefer to manage my own preparation without much coordination with others.',
     textB: 'I often end up helping others with material even when it cuts into my own study time.' },
 
-  { id: 'q18', traitA: 'N', traitB: 'C',
+  { id: 'q18', traitA: 'N', traitB: 'E',
     textA: 'Before a high-stakes test, I keep finding things I want to review even when I know I\'ve prepared well.',
-    textB: 'Before a high-stakes test, I feel ready once I\'ve worked through my plan.' },
+    textB: 'Before a high-stakes test, I feel more confident after talking through the material with someone.' },
 
   { id: 'q19', traitA: 'O', traitB: 'C',
     textA: 'I find myself thinking about ideas from class or prep long after the session ends.',
-    textB: 'Once a study session ends, I shift focus — I don\'t find myself replaying it later.' },
+    textB: 'Once a session ends, I prefer to check it off my list and move to the next activity.' },
 
   { id: 'q20', traitA: 'A', traitB: 'N',
     textA: 'My biggest source of pressure usually comes from not wanting to let other people down.',
-    textB: 'My biggest source of pressure usually comes from my own internal standards — not anyone else.' },
+    textB: 'My biggest source of pressure is a general feeling that I\'m not doing enough.' },
 ];
 
-const QUIZ_TRAIT_MAX = { O: 8, C: 8, N: 7, E: 3, A: 3 };
+const QUIZ_TRAIT_MAX = { O: 10, C: 13, N: 11, E: 3, A: 3 };
+// NOTE: E and A are deliberately underpowered relative to O, C, N.
+// O, C, N are the primary Big Five predictors of academic performance and
+// test outcomes. E and A are secondary modifiers — they inform coaching
+// delivery style, not score gap prediction.
