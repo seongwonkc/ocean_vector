@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VECTOR</title>
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const _sb = window.supabase.createClient(
+  'https://havatrfyuqqbidleplcf.supabase.co',
+  'sb_publishable_3v9CidUkG8p1tD_rWVcD-Q_CkZtoKAw'
+);
+localStorage.clear();
+_sb.auth.signOut().finally(() => { window.location.replace('/'); });
+</script>
+</body>
+</html>
