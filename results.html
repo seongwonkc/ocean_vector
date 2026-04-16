@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VECTOR | Your Learning Profile</title>
+  <link rel="stylesheet" href="css/styles-bluebook.css">
+  <style>
+    /* ── Results page overrides ─────────────────────────────────────── */
+    .results-hero {
+      max-width: 720px;
+      margin: 48px auto 0;
+      padding: 0 24px;
+    }
+    .results-profile-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 6px 14px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+    .results-headline {
+      font-size: clamp(26px, 4vw, 38px);
+      font-weight: 800;
+      line-height: 1.2;
+      color: var(--text);
+      margin-bottom: 24px;
+    }
+    .results-body {
+      font-size: 16px;
+      line-height: 1.8;
+      color: var(--text);
+      margin-bottom: 16px;
+      white-space: pre-line;
+    }
+    .results-sat-pattern {
+      background: var(--surface);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 6px 6px 0;
+      padding: 16px 20px;
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text-dim);
+      margin: 24px 0;
+    }
+    .results-sat-pattern strong {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+
+    /* ── Trait bars ──────────────────────────────────────────────────── */
+    .traits-section {
+      max-width: 720px;
+      margin: 48px auto;
+      padding: 0 24px;
+    }
+    .traits-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 28px;
+    }
+    .trait-row {
+      margin-bottom: 32px;
+    }
+    .trait-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 8px;
+    }
+    .trait-name {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text);
+    }
+    .trait-level {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .trait-bar-track {
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+    .trait-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--accent);
+      transition: width 1s cubic-bezier(.4,0,.2,1);
+    }
+    .trait-bar-fill.high { background: var(--accent); }
+    .trait-bar-fill.low  { background: var(--text-dim); }
+    .trait-desc {
+      font-size: 14px;
+      line-height: 1.75;
+      color: var(--text-dim);
+    }
+    .trait-desc strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    /* ── Divider ─────────────────────────────────────────────────────── */
+    .results-divider {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 24px;
+      border: none;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── CTA block ───────────────────────────────────────────────────── */
+    .results-cta {
+      max-width: 720px;
+      margin: 48px auto 80px;
+      padding: 0 24px;
+    }
+    .results-cta-box {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 36px 32px;
+      text-align: center;
+    }
+    .results-cta-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+    .results-cta-hook {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 10px;
+      line-height: 1.3;
+    }
+    .results-cta-sub {
+      font-size: 14px;
+      color: var(--text-dim);
+      line-height: 1.7;
+      margin-bottom: 28px;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .results-pricing-row {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .results-price-card {
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 24px;
+      min-width: 200px;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .results-price-card:hover,
+    .results-price-card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+    .results-price-card.featured {
+      border-color: var(--accent);
+    }
+    .price-tag {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .price-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+    }
+    .price-features {
+      font-size: 12px;
+      color: var(--text-dim);
+      line-height: 1.8;
+    }
+    .price-features li {
+      list-style: none;
+      padding-left: 0;
+    }
+    .price-features li::before {
+      content: '✓ ';
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .results-cta-signin {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-top: 16px;
+    }
+    .results-cta-signin a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .results-cta-signin a:hover { text-decoration: underline; }
+
+    /* ── Animation ───────────────────────────────────────────────────── */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(16px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in:nth-child(1) { animation-delay: 0.05s; }
+    .fade-in:nth-child(2) { animation-delay: 0.15s; }
+    .fade-in:nth-child(3) { animation-delay: 0.25s; }
+    .fade-in:nth-child(4) { animation-delay: 0.35s; }
+  </style>
+</head>
+<body>
+
+<div id="progress-bar-wrap">
+  <div id="progress-bar" style="width:100%"></div>
+</div>
+
+<nav id="top-nav">
+  <div class="nav-logo">VECTOR <span>Powered by OCEAN</span></div>
+  <div id="nav-timer"></div>
+  <div class="nav-step" id="nav-label"></div>
+</nav>
+
+<div id="app"></div>
+
+<script src="js/data.js"></script>
+<script>
+'use strict';
+
+// ── Copy ──────────────────────────────────────────────────────────────────────
+const RESULTS_COPY = {
+  OCN: {
+    headline: 'Your test scores are lying about you.',
+    voice: 'Trevor Noah',
+    body: `You studied. You prepared. You did everything they told you to do — and then you sat down for the test and your brain said "you know what, actually, no." Just decided today was not the day. And the frustrating thing is, from the outside, nobody can tell the difference between "didn't prepare" and "prepared completely and then fell apart under pressure." The score looks the same. But you know the difference, and that gap — between what you know and what showed up on the answer sheet — that's actually the most important data point in this whole thing (Dong et al., 2024).
+
+Because if the knowledge is there and the score isn't, that's not a studying problem. That's a very specific, very solvable problem.`,
+    satPattern: `Students with your profile typically start each section strong and fade in the final stretch — not because the material gets harder, but because the pressure compounds. The last five questions of every module are where your score is leaking.`,
+    cta: `Your full assessment shows exactly where the fade happens and how many points it's costing you. The number is specific. So is the fix.`,
+  },
+  OCn: {
+    headline: 'You see what most people miss.',
+    voice: 'Jerry Seinfeld',
+    body: `Have you ever watched someone study? Really watched them? They highlight everything, which means they've highlighted nothing. They make flashcards they never look at again. They reread the same paragraph four times hoping it'll mean something different. You don't do that. You actually understand what you're reading, you have a system that works, and you follow through on it. That's not normal, by the way. That's genuinely unusual (Mammadov, 2021).
+
+The interesting question — the only interesting question at this point — is what's standing between you and the score that matches what you actually know. Because something is. It's small, it's specific, and it is absolutely on the mechanical questions that don't reward the kind of thinking you're good at.`,
+    satPattern: `Your reasoning scores run ahead of your mechanical scores. Grammar, algebra, the procedural stuff — that's where the points are going. Not because you can't do them, but because they don't hold your attention the same way.`,
+    cta: `Your full assessment maps exactly where the gap is. Not in general — for your specific question types, your specific timing patterns, your specific score.`,
+  },
+  Ocn: {
+    headline: "You could ace this test. You just haven't decided to yet.",
+    voice: 'Nate Bargatze',
+    body: `Here's what I know about you. When something actually interests you, you're probably one of the sharpest people in the room — you pick things up fast, you see angles other people miss, and you make it look easy. The problem is the SAT has some parts that are genuinely interesting and some parts that are, honestly, kind of boring. And your brain treats those two things very differently, even though the test does not (Mammadov, 2021).
+
+It's not that you can't do the boring parts. You just haven't had a good reason to care about them yet. That's a more solvable problem than you'd think.`,
+    satPattern: `Your reasoning scores are strong when you're locked in. Your mechanical scores tell a quieter, more expensive story. The gap between those two numbers is almost entirely about consistency, not ability.`,
+    cta: `Your full assessment shows exactly which question types you're coasting on — and how much it's costing you. It's usually more than people expect.`,
+  },
+  OcN: {
+    headline: "You're capable of more than you're showing.",
+    voice: 'Louie CK',
+    body: `Here's what happens. You sit down to study and it goes fine — actually better than fine, sometimes it goes great, you're flying through stuff and thinking okay, I've got this. And then something doesn't click, or you get one thing wrong, or you just have a bad twenty minutes, and suddenly the whole thing unravels. Not the material. You. The material is still there. You've just temporarily lost access to it because your brain decided this was a good time to audit everything you've ever done wrong (Wertz et al., 2025).
+
+That's not stupidity. That's a very specific kind of torture that happens to people who care a lot and don't have a system for containing it yet.`,
+    satPattern: `Your scores vary more than almost any other profile — high on good days, low on bad ones, with very little in between. The ceiling is real. The floor is what needs work.`,
+    cta: `Your full assessment maps both numbers. Knowing where the floor is — and why it drops — is the only place to start.`,
+  },
+  oCn: {
+    headline: "You put the work in. Now find the ceiling.",
+    voice: 'Bill Burr',
+    body: `You know what you are? You're reliable. You show up, you do the work, you don't need someone to hold your hand or send you motivational quotes at 7am. That's actually rare. Most people fold the second it gets boring, and you don't, and that matters (Mammadov, 2021).
+
+Here's the thing though. There's a type of question on this test that doesn't have a procedure. No formula, no rule, no clear method — just "what does this suggest" or "what can be inferred." And for students like you, who are excellent precisely because you execute well on things with clear answers, those questions are where the score plateaus. Not because you're not smart enough. Because "smart enough" isn't the variable here. The variable is whether you've been taught how to approach questions that don't come with instructions.`,
+    satPattern: `Grammar, algebra, data questions — strong. Inference and interpretation — that's where the points are going. The gap between those two is the ceiling, and it's lower than it should be.`,
+    cta: `Your full assessment shows exactly where the plateau is and what's creating it. The fix is targeted, not more of the same.`,
+  },
+  oCN: {
+    headline: "The work is real. Something is eating it.",
+    voice: 'Richard Pryor',
+    body: `You work hard. Not "I tell people I work hard" hard — actually hard. You put the time in, you follow through, and you still walk out of tests feeling like it didn't come out right. And the thing that gets you is you can't explain it. You did the preparation. You know you did. So where did it go (Dong et al., 2024)?
+
+Here's where it went. You got into that room, the clock started, and somewhere in the middle of it — not at the beginning, you're fine at the beginning — the pressure started stacking up. One hard question, then another, and by the time you hit the last stretch of that section your preparation is still in there but you can't quite reach it. That's not weakness. That's a specific thing that happens to people who feel things deeply and haven't been given the tools to work with it yet.`,
+    satPattern: `Strong start, reliable middle, late-section fade. The content knowledge is there. The endgame is where it's going.`,
+    cta: `Your full assessment shows exactly where the fade starts and how many points it's taking with it. That's the number that changes everything.`,
+  },
+  ocn: {
+    headline: "This score isn't the real number.",
+    voice: 'Dave Chappelle',
+    body: `I'm not going to tell you that you weren't trying. You know whether you were trying. What I will say is that this score is measuring how much you cared about this particular test on this particular day, and that is a completely different thing from what you're actually capable of. Those two numbers are not the same (Mammadov, 2021).
+
+The interesting thing about your profile is that there's no anxiety getting in the way, no bad habits that are hard to break — there's just a gap between what's possible and what's currently happening. And that gap is almost entirely about engagement, which is the most fixable thing on this list. Once you have a reason to care — a real one, not a "you should care" one — the ability to execute is already there.`,
+    satPattern: `Relatively even performance across question types — which sounds fine until you realize it means you're leaving points on the table everywhere equally. The ceiling is much higher than the current score suggests.`,
+    cta: `Your full assessment separates what you know from what you're showing. The gap between those two numbers is usually the most surprising thing in the report.`,
+  },
+  ocN: {
+    headline: "The pressure you're feeling is real. So is what's underneath it.",
+    voice: 'Taylor Tomlinson',
+    body: `You feel this more than you show, and you're probably pretty tired of feeling it. The test, the expectations, the sense that you should be further along than you are — that's a lot to carry around, and the frustrating thing is it doesn't even feel proportional to what's actually at stake. Like your brain decided this was a great hill to die on (Wertz et al., 2025).
+
+Here's what I want you to know though: the score on this page is not a measurement of your ability. It's a measurement of what happens when anxiety meets an inconsistent preparation structure, and those are two different problems. The ability is actually in there — it's just that right now the noise is louder than the signal. That changes with the right starting point. Not a harder one. A better one.`,
+    satPattern: `Performance is suppressed across all question types — not from content gaps, but because anxiety and retrieval are competing with each other at the same time. The score is understating what you can actually do.`,
+    cta: `Your full assessment gives the anxiety somewhere specific to go. Actual data on where the gaps are — not a pep talk, not a harder schedule. A real starting point.`,
+  },
+};
+
+const TRAIT_COPY = {
+  O: {
+    high: { label: 'High Openness', headline: 'You think in connections.', body: `You tend to look for the deeper logic behind things — why a rule works, not just that it does. When something genuinely interests you, you go further than required without needing a reason to. On the SAT, that shows up as a natural advantage on inference and interpretation questions, and a subtle liability on the mechanical ones that don't reward depth. Research backs this up as a measurable pattern, not just a vibe (Mammadov, 2021).` },
+    low:  { label: 'Lower Openness', headline: 'You work best when the path is clear.', body: `You tend to be most effective when there's a defined method and a right answer. Abstract or open-ended questions feel less stable than procedural ones — not because you can't do them, but because there's no procedure to fall back on yet. That's a specific gap with a specific fix, and research shows that lower-Openness students respond strongly to explicit step-by-step strategies on reasoning tasks once the strategy is internalized (Tackett, 2011).` },
+  },
+  C: {
+    high: { label: 'High Conscientiousness', headline: "You have the system. Most people don't.", body: `You tend to track what you've covered, follow through on what you planned, and feel genuinely uncomfortable when the work isn't done. Conscientiousness is the single strongest Big Five predictor of academic achievement (Mammadov, 2021) — and you're running it at high levels. The question isn't whether the preparation is happening. It's whether it's pointed at the right targets.` },
+    low:  { label: 'Lower Conscientiousness', headline: 'You already know consistency is the variable.', body: `You tend to study in bursts — intense when engaged, harder to sustain when you're not. The follow-through is inconsistent and you probably know it. What you might not know is exactly where the inconsistency is costing you most. Lower Conscientiousness doesn't predict lower ability — it predicts a specific kind of preparation gap that shows up unevenly across question types (Mammadov, 2021).` },
+  },
+  N: {
+    high: { label: 'High Neuroticism', headline: "Your practice scores aren't your real scores.", body: `You tend to hold yourself to standards that feel just out of reach — and to feel the distance acutely when something goes wrong. On low-stakes practice, you're fine. On the real thing, something shifts. That's a documented pattern: performance sensitivity interacts specifically with test conditions to suppress retrieval independent of how prepared you actually are (Dong et al., 2024). The gap between your practice scores and your test scores is the number that matters most for your profile.` },
+    low:  { label: 'Lower Neuroticism', headline: "Pressure doesn't rattle you. That's rarer than you think.", body: `You tend to stay level when the stakes go up — not because you don't care, but because the anxiety response that derails other students doesn't fire the same way for you. On a timed, high-stakes test, that's a genuine performance advantage. Research confirms that lower Neuroticism provides a measurable buffer against the performance degradation that hits most students in the final stretch of each section (Dong et al., 2024). Your ceiling isn't anxiety. It's precision — and precision is trainable.` },
+  },
+  E: {
+    high: { label: 'Higher Extraversion', body: `You tend to process information faster when you can talk through it. Explaining something to someone else locks it in better than re-reading notes alone. For SAT prep, working with a consultant or talking through practice problems out loud isn't just preference — it's actually more efficient for how your brain consolidates material.` },
+    low:  { label: 'Lower Extraversion', body: `You tend to do your best thinking alone, without interruption. That suits the SAT format well — it's a solo performance under controlled conditions. The preparation style that works for you maps directly onto the test environment itself. That alignment is an advantage most students don't think about.` },
+  },
+  A: {
+    high: { label: 'Higher Agreeableness', body: `You tend to be aware of the people around you — sometimes to the point where it pulls focus from your own preparation. In a study group, you're often the one making sure everyone else understands before moving on. Worth watching: the time you spend helping others is real time, and it doesn't always come back.` },
+    low:  { label: 'Lower Agreeableness', body: `You tend to be self-directed and focused on your own goals without much pull toward coordinating with others. For SAT prep — which is fundamentally a solo performance — that orientation is an asset. You're unlikely to be derailed by social dynamics or peer pressure around study habits.` },
+  },
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function traitLevel(score, max) {
+  return score / max >= 0.5 ? 'high' : 'low';
+}
+
+function traitPct(score, max) {
+  return Math.round((score / max) * 100);
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render(quiz) {
+  const { scores, profileCode } = quiz;
+  const copy   = RESULTS_COPY[profileCode] || RESULTS_COPY['ocn'];
+  const profile = PROFILES ? PROFILES[profileCode] : null;
+  const profileLabel = profile ? profile.label : profileCode;
+
+  // Trait levels
+  const levels = {
+    O: traitLevel(scores.O, QUIZ_TRAIT_MAX.O),
+    C: traitLevel(scores.C, QUIZ_TRAIT_MAX.C),
+    N: traitLevel(scores.N, QUIZ_TRAIT_MAX.N),
+    E: traitLevel(scores.E, QUIZ_TRAIT_MAX.E),
+    A: traitLevel(scores.A, QUIZ_TRAIT_MAX.A),
+  };
+
+  const traitNames = { O: 'Openness', C: 'Conscientiousness', N: 'Neuroticism', E: 'Extraversion', A: 'Agreeableness' };
+
+  // Trait bars HTML
+  const traitBarsHtml = ['O','C','N','E','A'].map(t => {
+    const max   = QUIZ_TRAIT_MAX[t];
+    const pct   = traitPct(scores[t], max);
+    const level = levels[t];
+    const tc    = TRAIT_COPY[t][level];
+    return `
+<div class="trait-row fade-in">
+  <div class="trait-header">
+    <span class="trait-name">${traitNames[t]}</span>
+    <span class="trait-level">${tc.label}</span>
+  </div>
+  <div class="trait-bar-track">
+    <div class="trait-bar-fill ${level}" style="width:0%" data-pct="${pct}"></div>
+  </div>
+  ${tc.headline ? `<p style="font-size:14px;font-weight:700;color:var(--text);margin:0 0 6px;">${esc(tc.headline)}</p>` : ''}
+  <p class="trait-desc">${tc.body}</p>
+</div>`;
+  }).join('');
+
+  document.getElementById('app').innerHTML = `
+
+<div class="results-hero">
+  <div class="fade-in">
+    <div class="results-profile-badge">
+      Your Profile &nbsp;·&nbsp; ${esc(profileCode)} &nbsp;·&nbsp; ${esc(profileLabel)}
+    </div>
+    <h1 class="results-headline">${esc(copy.headline)}</h1>
+    <div class="results-body">${copy.body.replace(/\n/g,'<br><br>')}</div>
+    <div class="results-sat-pattern">
+      <strong>What this looks like on test day</strong>
+      ${esc(copy.satPattern)}
+    </div>
+  </div>
+</div>
+
+<hr class="results-divider" style="margin:40px auto;">
+
+<div class="traits-section">
+  <div class="traits-section-title">Your Five Traits</div>
+  ${traitBarsHtml}
+</div>
+
+<hr class="results-divider">
+
+<div class="results-cta">
+  <div class="results-cta-box">
+    <div class="results-cta-label">Ready for the full picture?</div>
+    <div class="results-cta-hook">${esc(copy.cta)}</div>
+    <div class="results-cta-sub">
+      Take the full 90-minute assessment. Get your mock SAT score, a complete score report, and a shareable PDF — built around your exact profile.
+    </div>
+
+    <div class="results-pricing-row">
+      <div class="results-price-card">
+        <div class="price-tag">$14.99</div>
+        <div class="price-label">One-time</div>
+        <ul class="price-features">
+          <li>Full SAT practice test</li>
+          <li>Mock score + score report</li>
+          <li>Shareable PDF report</li>
+          <li>14-day upgrade coupon</li>
+        </ul>
+      </div>
+      <div class="results-price-card featured">
+        <div class="price-tag">$22.99<span style="font-size:13px;font-weight:500;color:var(--text-dim)">/mo</span></div>
+        <div class="price-label">Subscription</div>
+        <ul class="price-features">
+          <li>Everything in one-time</li>
+          <li>Practice modules</li>
+          <li>Dashboard + progress tracking</li>
+          <li>Retakes included</li>
+        </ul>
+      </div>
+    </div>
+
+    <button class="bb-btn bb-btn-primary bb-btn-lg" onclick="window.location.href='/'">
+      Get Your Full Assessment →
+    </button>
+
+    <div class="results-cta-signin">
+      Already have an account? <a href="/">Sign in</a>
+    </div>
+  </div>
+</div>
+
+`;
+
+  // Animate trait bars after render
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.trait-bar-fill').forEach(bar => {
+      const pct = bar.dataset.pct;
+      setTimeout(() => { bar.style.width = pct + '%'; }, 200);
+    });
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function init() {
+  const raw = localStorage.getItem('vector_quiz');
+  if (!raw) {
+    window.location.replace('/quiz.html');
+    return;
+  }
+  try {
+    const quiz = JSON.parse(raw);
+    if (!quiz.profileCode || !quiz.scores) {
+      window.location.replace('/quiz.html');
+      return;
+    }
+    render(quiz);
+  } catch(e) {
+    window.location.replace('/quiz.html');
+  }
+}
+
+init();
+</script>
+</body>
+</html>
