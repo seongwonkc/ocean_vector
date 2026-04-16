@@ -660,8 +660,22 @@ function submitModule(module) {
 async function finishAssessment() {
   S.view='done'; render();
   try {
+    const rwRaw      = (S.rw1Score || 0) + (S.rw2Score || 0);
+    const rwScaled   = Math.round(200 + (rwRaw / 40) * 600);
+    const mathScaled = Math.round(200 + ((S.mathScore || 0) / 18) * 600);
+    const totalScore = rwScaled + mathScaled;
+
     await VectorDB.saveAssessmentResults(VectorApp.currentUser.id, {
-      oceanScores: S.oceanScores,
+      studentName:      S.studentName,
+      profileCode:      S.profileCode,
+      currentScore:     S.currentScore,
+      targetScore:      S.targetScore,
+      testDate:         S.testDate,
+      weeklyStudyHours: S.weeklyStudyHours,
+      rwScore:          rwScaled,
+      mathScore:        mathScaled,
+      totalScore:       totalScore,
+      oceanScores:      S.oceanScores,
     });
   } catch(e) { console.error('[VECTOR] Session save failed:',e); }
 }
