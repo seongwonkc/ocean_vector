@@ -313,7 +313,7 @@ function render(profile) {
   const days        = daysUntil(profile.test_date);
 
   // OCEAN trait bars
-  const traitMax  = { O: 11, C: 12, N: 9, E: 5, A: 3 };
+  const traitMax = { O: 10, C: 10, N: 10, E: 10, A: 10 };
   const traitNames = { O: 'O', C: 'C', N: 'N', E: 'E', A: 'A' };
   const traits = ['O','C','N','E','A'].map(t => {
     const score = profile['profile_' + t] || 0;
