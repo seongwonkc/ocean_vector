@@ -37,9 +37,8 @@
 
 // ── Question bank loader (direct Supabase) ────────────────────────────────────
 // Fetches live questions directly from the shared Supabase question bank via
-// VectorDB.fetchQuestions() (defined in js/supabase.js). Shape transform and
-// type mapping live there too. Falls back to hardcoded data.js arrays if the
-// student isn't signed in or the query fails.
+// VectorDB.fetchQuestions() (defined in js/supabase.js). Falls back to the
+// hardcoded data.js arrays if the query fails.
 const _qCache   = {};  // cacheKey → question[]
 const _qLoading = {};  // cacheKey → Promise<question[]|null>
 
@@ -68,7 +67,6 @@ async function loadQuestionsForView(view, moduleType) {
         return null;
       }
       _qCache[cacheKey] = questions;
-      // Update globals so scoring.js can reference them by name
       if (cacheKey === 'rw1')      window.RW1_QUESTIONS      = questions;
       if (cacheKey === 'rw2_hard') window.RW2_HARD_QUESTIONS = questions;
       if (cacheKey === 'rw2_easy') window.RW2_EASY_QUESTIONS = questions;
@@ -356,17 +354,16 @@ function htmlModuleIntro() {
   const cacheKey = S.view === 'rw2'
     ? (S.moduleType === 'hard' ? 'rw2_hard' : 'rw2_easy')
     : S.view;
-  const alreadyLoaded = !!_qCache[cacheKey];
+  const qCount = _qCache[cacheKey] ? getModuleQuestions().length : null;
 
-  const qCount = alreadyLoaded ? getModuleQuestions().length : null;
   const cfgs={
-    rw1:  { sub:'Module 1 of 2',  title:'Reading & Writing', q:qCount||27, min:32,
-            desc:'Read each passage and answer the question. Work in order — you can navigate back within the module.' },
-    rw2:  { sub:`Module 2 of 2 — ${S.moduleType==='hard'?'Advanced':'Standard'}`,
-            title:'Reading & Writing', q:qCount||27, min:32,
-            desc:'Continue with the same question format. You may not return to Module 1.' },
-    math: { sub:'Final Module', title:'Math', q:qCount||22, min:26,
-            desc:'Some questions require a typed answer. A calculator is permitted for all questions.' },
+    rw1:  {sub:'Module 1 of 2',  title:'Reading & Writing', q:qCount||27, min:32,
+           desc:'Read each passage and answer the question. Work in order — you can navigate back within the module.'},
+    rw2:  {sub:`Module 2 of 2 — ${S.moduleType==='hard'?'Advanced':'Standard'}`,
+           title:'Reading & Writing', q:qCount||27, min:32,
+           desc:'Continue with the same question format. You may not return to Module 1.'},
+    math: {sub:'Final Module', title:'Math', q:qCount||22, min:26,
+           desc:'Some questions require a typed answer. A calculator is permitted for all questions.'},
   };
   const c=cfgs[S.view];
   return `
@@ -669,7 +666,7 @@ function bindEvents() {
       const rs=getModuleResponses();
       const unanswered=qs.filter(qq=>!rs[qq.id]).length;
       if(unanswered>0&&!confirm(`You have ${unanswered} unanswered question${unanswered>1?'s':''}. Submit anyway?`)) return;
-      if(S.view==='math'&&S.qIndex===getModuleQuestions().length-1) S.mathTimeAtEnd=S.timerRemaining;
+      if(S.view==='math'&&S.qIndex===MATH_QUESTIONS.length-1) S.mathTimeAtEnd=S.timerRemaining;
       bFinal(q.id);
       submitModule(S.view);
     });
@@ -683,4 +680,87 @@ function handleIntakeNext() {
   const current=(document.getElementById('f-current')?.value ||'').trim();
   const target =(document.getElementById('f-target')?.value  ||'').trim();
   const date   =(document.getElementById('f-date')?.value    ||'').trim();
-  c
+  const hours  =(document.getElementById('f-hours')?.value   ||'').trim();
+  const errEl  =document.getElementById('intake-err');
+  if(!name||!current||!target||!date||!hours){
+    if(errEl) errEl.textContent='Please complete all fields before continuing.';
+    return;
+  }
+  if(errEl) errEl.textContent='';
+  S.studentName=name; S.currentScore=current; S.targetScore=target;
+  S.testDate=date; S.weeklyStudyHours=hours;
+  S.view='personality';
+  render();
+}
+
+function handlePersonalitySubmit() {
+  if(!PERSONALITY_PAIRS.every(p=>S.personalityResponses[p.id])) return;
+  S.oceanScores=computeOceanScores(S.personalityResponses);
+  S.profileCode =assignProfile(S.oceanScores);
+  S.view='rw1'; S.modulePhase='intro'; S.qIndex=0;
+  loadQuestionsForView('rw1'); // prefetch while student reads module intro
+  render();
+}
+
+async function handleBeginModule() {
+  const btn = document.getElementById('btn-begin');
+  if (btn) btn.textContent = 'Loading questions…';
+  await loadQuestionsForView(S.view, S.moduleType);
+  S.modulePhase='active'; S.qIndex=0;
+  startTimer({rw1:1920,rw2:1920,math:1320}[S.view]||1920);
+  render();
+}
+
+function submitModule(module) {
+  stopTimer();
+  if(module==='rw1') {
+    S.rw1Score  =scoreRWModule(S.rw1Responses,getModuleQuestions());
+    S.moduleType=S.rw1Score>=14?'hard':'easy';
+    S.view='rw2'; S.modulePhase='intro'; S.qIndex=0;
+    loadQuestionsForView('rw2', S.moduleType); // prefetch rw2
+    render();
+  } else if(module==='rw2') {
+    S.rw2Score=scoreRWModule(S.rw2Responses,getModuleQuestions());
+    S.view='math'; S.modulePhase='intro'; S.qIndex=0;
+    loadQuestionsForView('math'); // prefetch math
+    render();
+  } else if(module==='math') {
+    S.mathScore=scoreMathModule(S.mathResponses,getModuleQuestions());
+    finishAssessment();
+  }
+}
+
+async function finishAssessment() {
+  S.view='done'; render();
+  try {
+    const rwRaw      = (S.rw1Score || 0) + (S.rw2Score || 0);
+    const rwScaled   = Math.round(200 + (rwRaw / 40) * 600);
+    const mathScaled = Math.round(200 + ((S.mathScore || 0) / 18) * 600);
+    const totalScore = rwScaled + mathScaled;
+
+    await VectorDB.saveAssessmentResults(VectorApp.currentUser.id, {
+      studentName:      S.studentName,
+      profileCode:      S.profileCode,
+      currentScore:     S.currentScore,
+      targetScore:      S.targetScore,
+      testDate:         S.testDate,
+      weeklyStudyHours: S.weeklyStudyHours,
+      rwScore:          rwScaled,
+      mathScore:        mathScaled,
+      totalScore:       totalScore,
+      oceanScores:      S.oceanScores,
+    });
+  } catch(e) { console.error('[VECTOR] Session save failed:',e); }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function init() {
+  const user = await VectorApp.requireAuth();
+  if (!user) return; // redirected to '/'
+  render();
+}
+
+init();
+</script>
+</body>
+</html>
