@@ -35,74 +35,51 @@
 <script>
 'use strict';
 
-// ── Question bank loader (Seneca API) ─────────────────────────────────────────
-// Fetches live questions from vector-questions Netlify function and caches
-// them for the session. Falls back to the hardcoded data.js arrays if the
-// API is unreachable or not configured.
-const _SENECA_URL = (typeof window.SENECA_API_URL !== 'undefined' && window.SENECA_API_URL)
-  ? window.SENECA_API_URL.replace(/\/$/, '')
-  : '';
-const _VECTOR_KEY = (typeof window.VECTOR_API_KEY !== 'undefined') ? window.VECTOR_API_KEY : '';
+// ── Question bank loader (direct Supabase) ────────────────────────────────────
+// Fetches live questions directly from the shared Supabase question bank via
+// VectorDB.fetchQuestions() (defined in js/supabase.js). Shape transform and
+// type mapping live there too. Falls back to hardcoded data.js arrays if the
+// student isn't signed in or the query fails.
 const _qCache   = {};  // cacheKey → question[]
 const _qLoading = {};  // cacheKey → Promise<question[]|null>
 
-// Which DB params to use for each module view
 const _MODULE_PARAMS = {
-  rw1:      { test_set: 'mt01', module: 'rw1',      limit: '30' },
-  rw2_hard: { test_set: 'mt01', module: 'rw2_hard', limit: '30' },
-  rw2_easy: { test_set: 'mt01', module: 'rw2_hard', limit: '30' }, // only hard exists for now
-  math:     { test_set: 'mt01', module: 'm1',        limit: '25' },
+  rw1:      { test_set: 'mt01', module: 'rw1',      limit: 30 },
+  rw2_hard: { test_set: 'mt01', module: 'rw2_hard', limit: 30 },
+  rw2_easy: { test_set: 'mt01', module: 'rw2_hard', limit: 30 }, // only hard exists for now
+  math:     { test_set: 'mt01', module: 'm1',        limit: 25 },
 };
 
-function _moduleKey(view) {
-  if (view === 'rw2') return null; // determined at runtime based on moduleType
-  return view;                     // 'rw1' | 'math'
-}
-
-function _addNum(questions) {
-  return questions.map((q, i) => ({ ...q, num: q.num ?? (i + 1) }));
-}
-
 async function loadQuestionsForView(view, moduleType) {
-  // Resolve cache key
   let cacheKey = view;
   if (view === 'rw2') cacheKey = moduleType === 'hard' ? 'rw2_hard' : 'rw2_easy';
 
   if (_qCache[cacheKey])   return _qCache[cacheKey];
   if (_qLoading[cacheKey]) return _qLoading[cacheKey];
 
-  // No API config → skip, use hardcoded
-  if (!_SENECA_URL || !_VECTOR_KEY) return null;
-
   const params = _MODULE_PARAMS[cacheKey];
   if (!params) return null;
 
-  const qs = new URLSearchParams(params).toString();
-  const url = `${_SENECA_URL}/.netlify/functions/vector-questions?${qs}`;
-
-  _qLoading[cacheKey] = fetch(url, { headers: { 'X-Vector-Key': _VECTOR_KEY } })
-    .then(res => {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    })
-    .then(data => {
-      if (!Array.isArray(data.questions) || data.questions.length === 0) {
-        throw new Error('empty response');
+  _qLoading[cacheKey] = VectorDB.fetchQuestions(params)
+    .then(questions => {
+      if (!questions || questions.length === 0) {
+        console.warn(`[VECTOR] No questions for ${cacheKey} — using local fallback`);
+        delete _qLoading[cacheKey];
+        return null;
       }
-      const shaped = _addNum(data.questions);
-      _qCache[cacheKey] = shaped;
+      _qCache[cacheKey] = questions;
       // Update globals so scoring.js can reference them by name
-      if (cacheKey === 'rw1')      window.RW1_QUESTIONS      = shaped;
-      if (cacheKey === 'rw2_hard') window.RW2_HARD_QUESTIONS = shaped;
-      if (cacheKey === 'rw2_easy') window.RW2_EASY_QUESTIONS = shaped;
-      if (cacheKey === 'math')     window.MATH_QUESTIONS     = shaped;
-      console.log(`[VECTOR] Loaded ${shaped.length} questions for ${cacheKey}`);
-      return shaped;
+      if (cacheKey === 'rw1')      window.RW1_QUESTIONS      = questions;
+      if (cacheKey === 'rw2_hard') window.RW2_HARD_QUESTIONS = questions;
+      if (cacheKey === 'rw2_easy') window.RW2_EASY_QUESTIONS = questions;
+      if (cacheKey === 'math')     window.MATH_QUESTIONS     = questions;
+      console.log(`[VECTOR] Loaded ${questions.length} questions for ${cacheKey}`);
+      return questions;
     })
     .catch(err => {
-      console.warn(`[VECTOR] API load failed for ${cacheKey}, using local fallback:`, err.message);
+      console.warn(`[VECTOR] Load failed for ${cacheKey} — using local fallback:`, err.message);
       delete _qLoading[cacheKey];
-      return null; // caller falls back to hardcoded globals
+      return null;
     });
 
   return _qLoading[cacheKey];
@@ -691,4 +668,19 @@ function bindEvents() {
       const qs=getModuleQuestions();
       const rs=getModuleResponses();
       const unanswered=qs.filter(qq=>!rs[qq.id]).length;
-      if(unanswered>0&&!confirm(`You have ${unanswered} unanswered question${unanswered>1?'s':''}. Submit anyway?`)) r
+      if(unanswered>0&&!confirm(`You have ${unanswered} unanswered question${unanswered>1?'s':''}. Submit anyway?`)) return;
+      if(S.view==='math'&&S.qIndex===getModuleQuestions().length-1) S.mathTimeAtEnd=S.timerRemaining;
+      bFinal(q.id);
+      submitModule(S.view);
+    });
+    onAll('.bb-dot[data-qi]','click',e=>{ if(q)bFinal(q.id); S.qIndex=parseInt(e.currentTarget.dataset.qi,10); render(); });
+  }
+}
+
+// ── Handlers ──────────────────────────────────────────────────────────────────
+function handleIntakeNext() {
+  const name   =(document.getElementById('f-name')?.value    ||'').trim();
+  const current=(document.getElementById('f-current')?.value ||'').trim();
+  const target =(document.getElementById('f-target')?.value  ||'').trim();
+  const date   =(document.getElementById('f-date')?.value    ||'').trim();
+  c
