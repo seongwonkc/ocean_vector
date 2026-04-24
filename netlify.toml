@@ -1,3 +1,5 @@
 [build]
-  command = "echo \"window.SUPABASE_URL='$SUPABASE_URL'; window.SUPABASE_ANON_KEY='$SUPABASE_ANON_KEY';\" > config.js"
+  command = """
+    echo "window.SUPABASE_URL='$SUPABASE_URL'; window.SUPABASE_ANON_KEY='$SUPABASE_ANON_KEY';" > config.js &&     echo "window.VECTOR_USE_SDK=${VECTOR_USE_SDK:-false};" >> config.js
+  """
   publish = "."

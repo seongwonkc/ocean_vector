@@ -97,7 +97,18 @@ const S = {
   timerRemaining:0, timerInterval:null,
   behavioralData:{},
   oceanScores:null, profileCode:null,
+  // SDK instrumentation (WS4)
+  sessionRef: null,
+  sessionStartedAt: null,
+  questionTimings: {},
+  questionPositions: {},
+  questionChangeCounts: {},
+  flaggedQuestions: new Set(),
+  firstAnsweredAt: {},
+  totalScore: null,
 };
+
+const TOTAL_EXPECTED_QUESTIONS = 82; // ~30 rw1 + ~27 rw2 + ~22 math; update if bank changes
 
 // ── KaTeX ─────────────────────────────────────────────────────────────────────
 window.katexLoaded = false;
@@ -150,6 +161,112 @@ function bInit(id)   { if(!S.behavioralData[id]) S.behavioralData[id]={T0:Date.n
 function bT1(id)     { const d=S.behavioralData[id]; if(d&&d.T1===null) d.T1=Date.now(); }
 function bChange(id) { const d=S.behavioralData[id]; if(d) d.changes.push(Date.now()); }
 function bFinal(id)  { const d=S.behavioralData[id]; if(d) d.T_final=Date.now(); }
+
+// ── SDK timing & flag helpers ────────────────────────────────────────────────
+function _sdkQShow(qId) {
+  if (!S.questionTimings[qId]) S.questionTimings[qId] = { visits: [] };
+  S.questionTimings[qId].visits.push({ start: Date.now(), end: null });
+}
+function _sdkQHide(qId) {
+  const t = S.questionTimings[qId];
+  if (t && t.visits.length > 0) {
+    const lv = t.visits[t.visits.length - 1];
+    if (lv && lv.end === null) lv.end = Date.now();
+  }
+}
+function getAnswerCorrectness(qId) {
+  const modules = [
+    { qs: typeof RW1_QUESTIONS !== 'undefined' ? RW1_QUESTIONS : [], rs: S.rw1Responses },
+    { qs: S.moduleType === 'hard'
+        ? (typeof RW2_HARD_QUESTIONS !== 'undefined' ? RW2_HARD_QUESTIONS : [])
+        : (typeof RW2_EASY_QUESTIONS !== 'undefined' ? RW2_EASY_QUESTIONS : []),
+      rs: S.rw2Responses },
+    { qs: typeof MATH_QUESTIONS !== 'undefined' ? MATH_QUESTIONS : [], rs: S.mathResponses },
+  ];
+  for (const { qs, rs } of modules) {
+    const q = qs.find(q => q.id === qId);
+    if (!q) continue;
+    const resp = rs[qId];
+    if (resp === undefined || resp === null || resp === '') return false;
+    return String(resp).trim().toLowerCase() === String(q.answer || '').trim().toLowerCase();
+  }
+  return false;
+}
+function toggleFlag(questionId) {
+  if (S.flaggedQuestions.has(questionId)) {
+    S.flaggedQuestions.delete(questionId);
+  } else {
+    S.flaggedQuestions.add(questionId);
+  }
+  const btn = document.getElementById('btn-flag-' + questionId);
+  if (btn) {
+    const flagged = S.flaggedQuestions.has(questionId);
+    btn.setAttribute('aria-pressed', String(flagged));
+    btn.style.opacity = flagged ? '1' : '0.35';
+    btn.title = flagged ? 'Flagged for review' : 'Flag for review';
+    btn.querySelector('svg').setAttribute('fill', flagged ? 'currentColor' : 'none');
+  }
+}
+function buildQuestionAttempts() {
+  const attempts = [];
+  const orderedIds = Object.entries(S.questionPositions)
+    .sort(([, a], [, b]) => a - b)
+    .map(([id]) => id);
+  for (const qId of orderedIds) {
+    const timing = S.questionTimings[qId];
+    if (!timing) continue;
+    const totalMs = timing.visits.reduce((sum, v) => {
+      if (v.end === null) return sum;
+      return sum + (v.end - v.start);
+    }, 0);
+    const firstVisit = timing.visits[0];
+    const firstAnswered = S.firstAnsweredAt[qId];
+    const skippedFirstTime = !firstAnswered ||
+      (firstVisit && firstVisit.end && firstAnswered > firstVisit.end);
+    attempts.push({
+      questionId: qId,
+      isCorrect: getAnswerCorrectness(qId),
+      timeSpentSeconds: Math.round(totalMs / 1000),
+      wasFlagged: S.flaggedQuestions.has(qId),
+      numberOfChanges: S.questionChangeCounts[qId] || 0,
+      positionInSession: S.questionPositions[qId],
+      skippedFirstTime: !!skippedFirstTime,
+    });
+  }
+  return attempts;
+}
+function buildAssessmentSession(attempts) {
+  const endedAt = new Date().toISOString();
+  const durationMinutes = Math.round(
+    (Date.now() - new Date(S.sessionStartedAt).getTime()) / 60000
+  );
+  const totalCorrect = attempts.filter(a => a.isCorrect).length;
+  const quartileSize = Math.max(1, Math.floor(attempts.length / 4));
+  const firstQuartile = attempts.slice(0, quartileSize);
+  const lastQuartile = attempts.slice(-quartileSize);
+  const avg = arr => arr.length === 0 ? 0 :
+    arr.reduce((s, a) => s + a.timeSpentSeconds, 0) / arr.length;
+  const sectionsCompleted = [];
+  if (Object.keys(S.rw1Responses).length > 0)  sectionsCompleted.push('rw1');
+  if (Object.keys(S.rw2Responses).length > 0)  sectionsCompleted.push('rw2');
+  if (Object.keys(S.mathResponses).length > 0) sectionsCompleted.push('math');
+  return {
+    sessionRef: S.sessionRef,
+    startedAt: S.sessionStartedAt,
+    endedAt: endedAt,
+    durationMinutes: durationMinutes,
+    engagementScore: attempts.length / TOTAL_EXPECTED_QUESTIONS,
+    topics: sectionsCompleted,
+    performanceDelta: (S.totalScore || 0) - (parseInt(S.targetScore, 10) || 0),
+    context: 'vector_assessment',
+    totalQuestionsAttempted: attempts.length,
+    totalCorrect: totalCorrect,
+    sectionsCompleted: sectionsCompleted,
+    completedFullSession: attempts.length >= TOTAL_EXPECTED_QUESTIONS,
+    firstQuartileAvgSeconds: avg(firstQuartile),
+    lastQuartileAvgSeconds: avg(lastQuartile),
+  };
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function getModuleQuestions() {
@@ -206,6 +323,7 @@ function render() {
   else if(S.view==='personality')                        app.innerHTML=htmlPersonality();
   else if(isTest&&S.modulePhase==='intro')               app.innerHTML=htmlModuleIntro();
   else if(isTest&&S.modulePhase==='active')              app.innerHTML=htmlQuestion();
+  else if(isTest&&S.modulePhase==='review')              app.innerHTML=htmlReview();
   else if(S.view==='done')                               app.innerHTML=htmlConfirmation();
   bindEvents();
   renderKatex();
@@ -481,13 +599,28 @@ function htmlQuestion() {
   const dotsStrip=`<div class="bb-dots-strip">${dots}</div>`;
   const calcBtn = isMath ? `<button class="bb-btn bb-btn-ghost" id="btn-calc" onclick="toggleCalc()" style="font-size:12px;padding:6px 12px;">🖩 Calculator</button>` : '';
 
+  const isFlagged = S.flaggedQuestions.has(q.id);
+  const flagBtn = `<button
+    id="btn-flag-${q.id}"
+    onclick="toggleFlag('${q.id}')"
+    aria-label="Flag question for review"
+    aria-pressed="${isFlagged}"
+    title="${isFlagged ? 'Flagged for review' : 'Flag for review'}"
+    style="background:none;border:none;cursor:pointer;padding:4px 6px;color:var(--accent,#e67e22);opacity:${isFlagged ? '1' : '0.35'};">
+    <svg width="16" height="16" viewBox="0 0 16 16"
+      fill="${isFlagged ? 'currentColor' : 'none'}"
+      stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 1v14M3 1h9l-3 4.5 3 4.5H3"/>
+    </svg>
+  </button>`;
+
   if(isMath || !passageHtml) {
     const stem=q.text||q.question||'';
     return `
 <div class="bb-math-layout">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
     ${dotsStrip.replace('margin-bottom:16px','margin-bottom:0')}
-    ${calcBtn}
+    <div style="display:flex;align-items:center;gap:6px;">${calcBtn}${flagBtn}</div>
   </div>
   <div class="bb-math-stem">
     <div style="font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">Q${q.num} · ${typeLabel}</div>
@@ -512,9 +645,11 @@ function htmlQuestion() {
   <div class="bb-divider-line"></div>
   <div class="bb-right-panel">
     ${dotsStrip}
-    <div class="bb-q-num">
-      Question ${q.num} of ${questions.length}
-      <span class="bb-q-type-badge">${typeLabel}</span>
+    <div class="bb-q-num" style="display:flex;align-items:center;justify-content:space-between;">
+      <div>Question ${q.num} of ${questions.length}
+        <span class="bb-q-type-badge">${typeLabel}</span>
+      </div>
+      ${flagBtn}
     </div>
     <div class="bb-question-stem">${q.question||q.text||''}</div>
     ${answerHtml}
@@ -526,6 +661,44 @@ function htmlQuestion() {
 function toggleCalc() {
   const panel = document.getElementById('calc-panel');
   if (panel) panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+}
+
+// ── Review screen ─────────────────────────────────────────────────────────────
+function htmlReview() {
+  const questions = getModuleQuestions();
+  const responses = getModuleResponses();
+  const flaggedList = questions.filter(q => S.flaggedQuestions.has(q.id));
+  const rows = flaggedList.map((q, fi) => {
+    const qNum = q.num || (questions.indexOf(q) + 1);
+    const ans = responses[q.id];
+    const answered = ans !== undefined && ans !== null && ans !== '';
+    const qi = questions.indexOf(q);
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border,#e5e7eb);">
+      <span style="font-size:14px;">Q${qNum}: <em style="color:var(--text-dim)">${(q.type||'').replace(/_/g,' ')}</em></span>
+      <span style="font-size:12px;color:${answered?'var(--text-dim)':'#e74c3c'};">${answered?'Answered':'Unanswered'}</span>
+      <button class="bb-btn bb-btn-ghost" style="font-size:12px;padding:4px 10px;"
+        onclick="S.modulePhase='active';S.qIndex=${qi};render();">Review →</button>
+    </div>`;
+  }).join('');
+  return `
+<div class="bb-screen">
+  <div class="bb-title" style="margin-bottom:8px;">Review Flagged Questions</div>
+  <div class="bb-subtitle" style="margin-bottom:24px;">
+    You flagged ${flaggedList.length} question${flaggedList.length!==1?'s':''} for review.
+    Jump to any or submit when ready.
+  </div>
+  <div>${rows}</div>
+  <div class="bb-nav-row" style="justify-content:space-between;margin-top:24px;">
+    <button class="bb-btn bb-btn-ghost"
+      onclick="S.modulePhase='active';S.qIndex=${String('getModuleQuestions().length-1')};render();">
+      ← Back to Last Question
+    </button>
+    <button class="bb-btn bb-btn-primary"
+      onclick="S.modulePhase='active';submitModule('${S.view}');">
+      Submit Module →
+    </button>
+  </div>
+</div>`;
 }
 
 // ── Confirmation ──────────────────────────────────────────────────────────────
@@ -610,6 +783,8 @@ function bindEvents() {
     const questions=getModuleQuestions();
     const q=questions[S.qIndex];
     if(q) bInit(q.id);
+    // SDK: record question show
+    if(q) _sdkQShow(q.id);
 
     if(q&&q.isSPR) {
       const inp=document.getElementById('spr-input');
@@ -620,6 +795,10 @@ function bindEvents() {
           const old=getModuleResponses()[q.id];
           if(old&&old!==inp.value) bChange(q.id);
           setR(q.id,inp.value);
+          // SDK: change count + first answered
+          if(S.questionChangeCounts[q.id]===undefined){S.questionChangeCounts[q.id]=0;}
+          else if(old&&old!==inp.value){S.questionChangeCounts[q.id]++;}
+          if(!S.firstAnsweredAt[q.id]&&inp.value.trim()){S.firstAnsweredAt[q.id]=Date.now();}
           const hasVal=inp.value.trim().length>0;
           const allDone=allAnswered(getModuleResponses(),questions);
           if(q===questions[questions.length-1]) {
@@ -640,11 +819,15 @@ function bindEvents() {
         bT1(q.id);
         if(prev&&prev!==letter) bChange(q.id);
         setR(q.id,letter);
+        // SDK: change count + first answered
+        if(S.questionChangeCounts[q.id]===undefined){S.questionChangeCounts[q.id]=0;}
+        else if(prev&&prev!==letter){S.questionChangeCounts[q.id]++;}
+        if(!S.firstAnsweredAt[q.id]){S.firstAnsweredAt[q.id]=Date.now();}
         render();
       });
     }
 
-    on('btn-q-prev','click',()=>{ if(S.qIndex>0&&q){bFinal(q.id);S.qIndex--;render();} });
+    on('btn-q-prev','click',()=>{ if(S.qIndex>0&&q){bFinal(q.id);_sdkQHide(q.id);S.qIndex--;render();} });
     on('btn-q-next','click',()=>{
       if(!q) return;
       if(q.isSPR){
@@ -656,6 +839,7 @@ function bindEvents() {
         if(!getModuleResponses()[q.id]) return;
       }
       bFinal(q.id);
+      _sdkQHide(q.id);
       S.qIndex++;
       render();
     });
@@ -668,9 +852,12 @@ function bindEvents() {
       if(unanswered>0&&!confirm(`You have ${unanswered} unanswered question${unanswered>1?'s':''}. Submit anyway?`)) return;
       if(S.view==='math'&&S.qIndex===MATH_QUESTIONS.length-1) S.mathTimeAtEnd=S.timerRemaining;
       bFinal(q.id);
+      _sdkQHide(q.id);
+      // Review screen if flagged questions exist
+      if(S.flaggedQuestions.size>0){S.modulePhase='review';render();return;}
       submitModule(S.view);
     });
-    onAll('.bb-dot[data-qi]','click',e=>{ if(q)bFinal(q.id); S.qIndex=parseInt(e.currentTarget.dataset.qi,10); render(); });
+    onAll('.bb-dot[data-qi]','click',e=>{ if(q){bFinal(q.id);_sdkQHide(q.id);} S.qIndex=parseInt(e.currentTarget.dataset.qi,10); render(); });
   }
 }
 
@@ -708,6 +895,18 @@ async function handleBeginModule() {
   await loadQuestionsForView(S.view, S.moduleType);
   S.modulePhase='active'; S.qIndex=0;
   startTimer({rw1:1920,rw2:1920,math:1320}[S.view]||1920);
+  // SDK: mint session UUID on first module start
+  if (!S.sessionRef) {
+    S.sessionRef = crypto.randomUUID();
+    S.sessionStartedAt = new Date().toISOString();
+  }
+  // Assign 1-indexed positions within this module
+  const _moduleQs = getModuleQuestions();
+  _moduleQs.forEach((q, i) => {
+    if (S.questionPositions[q.id] === undefined) {
+      S.questionPositions[q.id] = i + 1;
+    }
+  });
   render();
 }
 
@@ -737,6 +936,7 @@ async function finishAssessment() {
     const rwScaled   = Math.round(200 + (rwRaw / 40) * 600);
     const mathScaled = Math.round(200 + ((S.mathScore || 0) / 18) * 600);
     const totalScore = rwScaled + mathScaled;
+    S.totalScore = totalScore; // stored for SDK buildAssessmentSession
 
     await VectorDB.saveAssessmentResults(VectorApp.currentUser.id, {
       studentName:      S.studentName,
@@ -751,6 +951,31 @@ async function finishAssessment() {
       oceanScores:      S.oceanScores,
     });
   } catch(e) { console.error('[VECTOR] Session save failed:',e); }
+
+  // SDK dual-write — additive, non-blocking, NEVER fails user flow
+  if (window.VECTOR_USE_SDK === true) {
+    try {
+      const attempts = buildQuestionAttempts();
+      const session  = buildAssessmentSession(attempts);
+      const jwt = await VectorApp.getSession().then(s => s && s.access_token);
+      if (!jwt) {
+        console.error('[VECTOR] SDK ingest skipped: no JWT');
+      } else {
+        await fetch('/.netlify/functions/vector-ingest-assessment-attempt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jwt },
+          body: JSON.stringify({ attempts, sessionRef: S.sessionRef }),
+        }).then(r => { if (!r.ok) console.error('[VECTOR] SDK attempt ingest failed:', r.status); });
+        await fetch('/.netlify/functions/vector-ingest-assessment-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jwt },
+          body: JSON.stringify({ session }),
+        }).then(r => { if (!r.ok) console.error('[VECTOR] SDK session ingest failed:', r.status); });
+      }
+    } catch (err) {
+      console.error('[VECTOR] SDK ingest error (non-blocking):', err);
+    }
+  }
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
