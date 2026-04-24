@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VECTOR | Linking Seneca Account</title>
+  <link rel="stylesheet" href="css/styles-bluebook.css">
+  <style>
+    .callback-wrap {
+      max-width: 480px;
+      margin: 80px auto 0;
+      padding: 0 24px;
+      text-align: center;
+    }
+    .callback-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+    .callback-msg {
+      font-size: 14px;
+      color: var(--text-dim);
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+    .callback-btn {
+      display: inline-block;
+      background: var(--accent, #2563eb);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 10px 24px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+    }
+    .callback-btn.secondary {
+      background: none;
+      color: var(--text-dim);
+      border: 1px solid var(--border, #ddd);
+      margin-left: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<nav id="top-nav">
+  <div class="nav-logo">VECTOR <span>Powered by OCEAN</span></div>
+</nav>
+
+<div class="callback-wrap">
+  <!-- States: loading / success / identity-mismatch / error -->
+  <div id="state-loading">
+    <p class="callback-msg">Linking your Seneca account&hellip;</p>
+  </div>
+
+  <div id="state-success" style="display:none">
+    <p class="callback-title">Account linked!</p>
+    <p class="callback-msg">Your Seneca account is now connected. Redirecting you to the dashboard&hellip;</p>
+  </div>
+
+  <div id="state-identity-mismatch" style="display:none">
+    <p class="callback-title">Account mismatch</p>
+    <p class="callback-msg">
+      Your Seneca account is registered to a different email than your VECTOR account.
+      Please sign into the Seneca account that uses the same Google account as VECTOR.
+    </p>
+    <button class="callback-btn" id="btn-retry">Try a different Seneca account</button>
+  </div>
+
+  <div id="state-error" style="display:none">
+    <p class="callback-title">Something went wrong</p>
+    <p class="callback-msg" id="error-detail">
+      We couldn&rsquo;t complete the link. The token may have expired &mdash;
+      please try again. If the problem persists, contact support.
+    </p>
+    <button class="callback-btn" id="btn-retry-error">Try again</button>
+    <button class="callback-btn secondary" onclick="window.location.replace('/dashboard.html')">Go to dashboard</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/app.js"></script>
+<script src="js/linkFlow.js"></script>
+<script>
+'use strict';
+
+function show(id) {
+  ['state-loading','state-success','state-identity-mismatch','state-error']
+    .forEach(s => {
+      document.getElementById(s).style.display = (s === id) ? 'block' : 'none';
+    });
+}
+
+document.getElementById('btn-retry').addEventListener('click', () => {
+  VectorLinkFlow.initiateLinkFlow();
+});
+document.getElementById('btn-retry-error').addEventListener('click', () => {
+  VectorLinkFlow.initiateLinkFlow();
+});
+
+async function run() {
+  const params = new URLSearchParams(window.location.search);
+  const token  = params.get('token');
+
+  if (!token || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
+    show('state-error');
+    document.getElementById('error-detail').textContent =
+      'No valid link token found in this URL. Please start the link flow again from your dashboard.';
+    return;
+  }
+
+  const session = await VectorDB.getSession();
+  if (!session) {
+    // Not authenticated — send to login, which will redirect back after auth
+    window.location.replace('/');
+    return;
+  }
+
+  let res;
+  try {
+    res = await fetch('/.netlify/functions/vector-link-user', {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ senecaLinkToken: token }),
+    });
+  } catch (networkErr) {
+    show('state-error');
+    return;
+  }
+
+  if (res.ok) {
+    // Clear bridge cache so dashboard picks up the new state
+    sessionStorage.removeItem('vector_bridge_status');
+    show('state-success');
+    setTimeout(() => window.location.replace('/dashboard.html'), 1500);
+    return;
+  }
+
+  const body = await res.json().catch(() => ({}));
+  const code  = body?.error?.code;
+
+  if (code === 'IDENTITY_MISMATCH') {
+    show('state-identity-mismatch');
+    return;
+  }
+
+  // All other errors — show generic failure with server message if available
+  if (body?.error?.message) {
+    document.getElementById('error-detail').textContent = body.error.message;
+  }
+  show('state-error');
+}
+
+run();
+</script>
+</body>
+</html>

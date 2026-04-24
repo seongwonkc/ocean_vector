@@ -1,0 +1,15 @@
+{
+  "name": "ocean_vector",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": "20.x"
+  },
+  "dependencies": {
+    "@seneca/sdk": "git+ssh://git@github.com/kevin/seneca_sdk.git#561557f238bbc9f520f9352c588ac557ee261a02",
+    "@supabase/supabase-js": "^2.45.0"
+  },
+  "scripts": {
+    "test": "node --test netlify/functions/**/*.test.js"
+  }
+}
