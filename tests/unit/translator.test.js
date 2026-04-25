@@ -202,3 +202,113 @@ describe('translateAssessmentSession', () => {
     assert.equal(err.code, 'VALIDATION');
   });
 });
+
+// ── Per-field VALIDATION coverage (Finding 6) ────────────────────────────────
+describe('translateQuestionAttempts — per-field VALIDATION', () => {
+  const REQUIRED_ATTEMPT_FIELDS = [
+    'questionId', 'isCorrect', 'timeSpentSeconds',
+    'wasFlagged', 'numberOfChanges', 'positionInSession', 'skippedFirstTime',
+  ];
+
+  for (const field of REQUIRED_ATTEMPT_FIELDS) {
+    it(`missing ${field} throws VALIDATION`, () => {
+      const attempt = {
+        questionId:        'rw1_001',
+        isCorrect:         true,
+        timeSpentSeconds:  45,
+        wasFlagged:        false,
+        numberOfChanges:   0,
+        positionInSession: 1,
+        skippedFirstTime:  false,
+      };
+      delete attempt[field];
+      let err;
+      try { translateQuestionAttempts([attempt], {}); } catch(e) { err = e; }
+      assert.ok(err, `expected ${field} removal to throw`);
+      assert.equal(err.code, 'VALIDATION', `expected VALIDATION, got ${err.code}`);
+      assert.ok(
+        err.message.includes(field),
+        `expected error message to mention '${field}', got: ${err.message}`
+      );
+    });
+  }
+});
+
+describe('translateAssessmentSession — per-field VALIDATION', () => {
+  const REQUIRED_SESSION_FIELDS = [
+    'sessionRef', 'startedAt', 'endedAt', 'durationMinutes',
+    'engagementScore', 'topics', 'performanceDelta', 'context',
+  ];
+
+  for (const field of REQUIRED_SESSION_FIELDS) {
+    it(`missing ${field} throws VALIDATION`, () => {
+      const session = {
+        sessionRef:       'sess-uuid-0001',
+        startedAt:        '2026-04-24T10:00:00.000Z',
+        endedAt:          '2026-04-24T11:30:00.000Z',
+        durationMinutes:  90,
+        engagementScore:  0.85,
+        topics:           ['rw1', 'math'],
+        performanceDelta: 30,
+        context:          'vector_assessment',
+      };
+      delete session[field];
+      let err;
+      try { translateAssessmentSession(session, {}); } catch(e) { err = e; }
+      assert.ok(err, `expected ${field} removal to throw`);
+      assert.equal(err.code, 'VALIDATION', `expected VALIDATION, got ${err.code}`);
+      assert.ok(
+        err.message.includes(field),
+        `expected error message to mention '${field}', got: ${err.message}`
+      );
+    });
+  }
+});
+
+// ── console.warn spy tests for unknown-field drop ─────────────────────────────
+describe('unknown-field logging', () => {
+  it('translateQuestionAttempts: unknown field triggers console.warn with field name', () => {
+    const warns = [];
+    const origWarn = console.warn;
+    console.warn = (...args) => warns.push(args.join(' '));
+
+    try {
+      const attempt = {
+        questionId: 'rw1_001', isCorrect: true, timeSpentSeconds: 30,
+        wasFlagged: false, numberOfChanges: 0, positionInSession: 1,
+        skippedFirstTime: false, secretSauceField: 'should-be-logged',
+      };
+      translateQuestionAttempts([attempt], {});
+    } finally {
+      console.warn = origWarn;
+    }
+
+    assert.equal(warns.length, 1, 'expected exactly one console.warn call');
+    const msg = warns[0];
+    assert.ok(msg.includes('secretSauceField'), `warn did not mention unknown field: ${msg}`);
+    assert.ok(msg.includes('unknown_fields_dropped'), `warn missing event key: ${msg}`);
+  });
+
+  it('translateAssessmentSession: unknown field triggers console.warn with field name', () => {
+    const warns = [];
+    const origWarn = console.warn;
+    console.warn = (...args) => warns.push(args.join(' '));
+
+    try {
+      const session = {
+        sessionRef: 'sess-1', startedAt: '2026-04-24T10:00:00.000Z',
+        endedAt: '2026-04-24T11:30:00.000Z', durationMinutes: 90,
+        engagementScore: 0.9, topics: ['math'], performanceDelta: 0,
+        context: 'vector_assessment', surpriseMetric: 42,
+      };
+      translateAssessmentSession(session, {});
+    } finally {
+      console.warn = origWarn;
+    }
+
+    assert.equal(warns.length, 1, 'expected exactly one console.warn call');
+    const msg = warns[0];
+    assert.ok(msg.includes('surpriseMetric'), `warn did not mention unknown field: ${msg}`);
+    assert.ok(msg.includes('unknown_fields_dropped'), `warn missing event key: ${msg}`);
+  });
+});

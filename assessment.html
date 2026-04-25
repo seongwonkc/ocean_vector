@@ -103,12 +103,16 @@ const S = {
   questionTimings: {},
   questionPositions: {},
   questionChangeCounts: {},
-  flaggedQuestions: new Set(),
+  flaggedQuestions: { rw1: new Set(), rw2: new Set(), math: new Set() },
   firstAnsweredAt: {},
   totalScore: null,
+  positionOffset: 0,  // global running position counter across modules
 };
 
-const TOTAL_EXPECTED_QUESTIONS = 82; // ~30 rw1 + ~27 rw2 + ~22 math; update if bank changes
+// Derived from data.js arrays at load time — both RW2 variants are same length.
+// RW1(20) + RW2(20) + Math(18) = 58. Update automatically if bank changes.
+const TOTAL_EXPECTED_QUESTIONS =
+  RW1_QUESTIONS.length + RW2_HARD_QUESTIONS.length + MATH_QUESTIONS.length;
 
 // ── KaTeX ─────────────────────────────────────────────────────────────────────
 window.katexLoaded = false;
@@ -153,6 +157,9 @@ function updateTimerDisplay() {
 function autoSubmitModule() {
   const inp = document.getElementById('spr-input');
   if (inp) { const qs=getModuleQuestions(); const q=qs[S.qIndex]; if(q) setR(q.id,inp.value.trim()); }
+  // Close current question's timing before auto-submitting (mirrors manual submit path)
+  const _autoQ = getModuleQuestions()[S.qIndex];
+  if (_autoQ) { bFinal(_autoQ.id); _sdkQHide(_autoQ.id); }
   submitModule(S.view);
 }
 
@@ -193,14 +200,17 @@ function getAnswerCorrectness(qId) {
   return false;
 }
 function toggleFlag(questionId) {
-  if (S.flaggedQuestions.has(questionId)) {
-    S.flaggedQuestions.delete(questionId);
+  const mod = S.view;  // rw1 | rw2 | math
+  const flagSet = S.flaggedQuestions[mod];
+  if (!flagSet) return;  // guard: called outside a module view
+  if (flagSet.has(questionId)) {
+    flagSet.delete(questionId);
   } else {
-    S.flaggedQuestions.add(questionId);
+    flagSet.add(questionId);
   }
   const btn = document.getElementById('btn-flag-' + questionId);
   if (btn) {
-    const flagged = S.flaggedQuestions.has(questionId);
+    const flagged = flagSet.has(questionId);
     btn.setAttribute('aria-pressed', String(flagged));
     btn.style.opacity = flagged ? '1' : '0.35';
     btn.title = flagged ? 'Flagged for review' : 'Flag for review';
@@ -227,7 +237,9 @@ function buildQuestionAttempts() {
       questionId: qId,
       isCorrect: getAnswerCorrectness(qId),
       timeSpentSeconds: Math.round(totalMs / 1000),
-      wasFlagged: S.flaggedQuestions.has(qId),
+      wasFlagged: (S.flaggedQuestions.rw1.has(qId) ||
+                   S.flaggedQuestions.rw2.has(qId) ||
+                   S.flaggedQuestions.math.has(qId)),
       numberOfChanges: S.questionChangeCounts[qId] || 0,
       positionInSession: S.questionPositions[qId],
       skippedFirstTime: !!skippedFirstTime,
@@ -599,7 +611,8 @@ function htmlQuestion() {
   const dotsStrip=`<div class="bb-dots-strip">${dots}</div>`;
   const calcBtn = isMath ? `<button class="bb-btn bb-btn-ghost" id="btn-calc" onclick="toggleCalc()" style="font-size:12px;padding:6px 12px;">🖩 Calculator</button>` : '';
 
-  const isFlagged = S.flaggedQuestions.has(q.id);
+  const _flagSet = S.flaggedQuestions[S.view] || new Set();
+  const isFlagged = _flagSet.has(q.id);
   const flagBtn = `<button
     id="btn-flag-${q.id}"
     onclick="toggleFlag('${q.id}')"
@@ -667,7 +680,8 @@ function toggleCalc() {
 function htmlReview() {
   const questions = getModuleQuestions();
   const responses = getModuleResponses();
-  const flaggedList = questions.filter(q => S.flaggedQuestions.has(q.id));
+  const _reviewFlagSet = S.flaggedQuestions[S.view] || new Set();
+  const flaggedList = questions.filter(q => _reviewFlagSet.has(q.id));
   const rows = flaggedList.map((q, fi) => {
     const qNum = q.num || (questions.indexOf(q) + 1);
     const ans = responses[q.id];
@@ -854,7 +868,8 @@ function bindEvents() {
       bFinal(q.id);
       _sdkQHide(q.id);
       // Review screen if flagged questions exist
-      if(S.flaggedQuestions.size>0){S.modulePhase='review';render();return;}
+      const _submitFlagSet = S.flaggedQuestions[S.view] || new Set();
+      if(_submitFlagSet.size>0){S.modulePhase='review';render();return;}
       submitModule(S.view);
     });
     onAll('.bb-dot[data-qi]','click',e=>{ if(q){bFinal(q.id);_sdkQHide(q.id);} S.qIndex=parseInt(e.currentTarget.dataset.qi,10); render(); });
@@ -900,13 +915,14 @@ async function handleBeginModule() {
     S.sessionRef = crypto.randomUUID();
     S.sessionStartedAt = new Date().toISOString();
   }
-  // Assign 1-indexed positions within this module
+  // Assign globally sequential positions across all modules
   const _moduleQs = getModuleQuestions();
   _moduleQs.forEach((q, i) => {
     if (S.questionPositions[q.id] === undefined) {
-      S.questionPositions[q.id] = i + 1;
+      S.questionPositions[q.id] = S.positionOffset + i + 1;
     }
   });
+  S.positionOffset += _moduleQs.length;
   render();
 }
 
