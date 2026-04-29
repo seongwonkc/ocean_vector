@@ -29,12 +29,10 @@ window.VectorApp = {
   },
 
   async _routeAuthedUser(userId) {
-    const { data } = await VectorDB.getStudentProfile(userId);
-    if (data?.assessment_completed) {
-      window.location.replace('/dashboard.html');
-    } else {
-      window.location.replace('/assessment.html');
-    }
+    // Interim routing: all authenticated users go to /assessment.html.
+    // Feature 6 (/profile) and Feature 3 (/welcome) will add branches here
+    // once those routes ship. dashboard.html retired in Feature 1.
+    window.location.replace('/assessment.html');
   },
 
   // Shows the Seneca link banner on protected pages when bridge is missing.

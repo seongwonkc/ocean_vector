@@ -78,7 +78,7 @@
       please try again. If the problem persists, contact support.
     </p>
     <button class="callback-btn" id="btn-retry-error">Try again</button>
-    <button class="callback-btn secondary" onclick="window.location.replace('/dashboard.html')">Go to dashboard</button>
+    <button class="callback-btn secondary" onclick="window.location.replace('/assessment.html')">Go to dashboard</button>
   </div>
 </div>
 
@@ -141,7 +141,7 @@ async function run() {
     // Clear bridge cache so dashboard picks up the new state
     sessionStorage.removeItem('vector_bridge_status');
     show('state-success');
-    setTimeout(() => window.location.replace('/dashboard.html'), 1500);
+    setTimeout(() => window.location.replace('/assessment.html'), 1500);
     return;
   }
 

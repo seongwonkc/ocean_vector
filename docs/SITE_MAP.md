@@ -2,7 +2,8 @@
 
 > Route inventory for the VECTOR web app (ocean_vector).
 > Updated as routes are added or retired.
-> Last updated: 2026-04-28
+> Last updated: 2026-04-29
+> Feature 1 retired: quiz.html, dashboard.html, consultant.html, results.html (OCEAN-era pages, never in this map)
 
 ---
 

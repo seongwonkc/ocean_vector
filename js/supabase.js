@@ -7,7 +7,7 @@ const _SUPABASE_URL = 'https://havatrfyuqqbidleplcf.supabase.co';
 const _SUPABASE_KEY = 'sb_publishable_3v9CidUkG8p1tD_rWVcD-Q_CkZtoKAw';
 
 // ── Question shape transform ─────────────────────────────────────────────────
-// Maps DB question_type codes → VECTOR behavioral type (used by scoring.js)
+// Maps DB question_type codes → VECTOR behavioral type
 const _QT_TO_VECTOR = {
   cs_wic: 'vocabulary', cs_ptr: 'structure', cs_bsm: 'structure', cs_csu: 'structure',
   ii_cot: 'inference',  ii_coe: 'inference',  ii_inf: 'inference',
@@ -109,31 +109,6 @@ window.VectorDB = {
       .eq('id', userId)
       .single();
     return { data, error };
-  },
-
-  async saveAssessmentResults(userId, payload) {
-    const { error } = await _sb
-      .from('students')
-      .upsert({
-        id:                   userId,
-        student_name:         payload.studentName        ?? null,
-        profile_code:         payload.profileCode        ?? null,
-        current_score:        payload.currentScore       ?? null,
-        target_score:         payload.targetScore        ?? null,
-        test_date:            payload.testDate           ?? null,
-        weekly_hours:         payload.weeklyStudyHours   ?? null,
-        rw_score:             payload.rwScore            ?? null,
-        math_score:           payload.mathScore          ?? null,
-        total_score:          payload.totalScore         ?? null,
-        profile_N:            payload.oceanScores?.N     ?? null,
-        profile_C:            payload.oceanScores?.C     ?? null,
-        profile_O:            payload.oceanScores?.O     ?? null,
-        profile_E:            payload.oceanScores?.E     ?? null,
-        profile_A:            payload.oceanScores?.A     ?? null,
-        assessment_completed: true,
-      }, { onConflict: 'id' });
-    if (error) console.error('[VectorDB] saveAssessmentResults error:', error);
-    return { error };
   },
 
 };
