@@ -33,14 +33,18 @@ Two new files, no schema changes, no SDK contract changes, no seneca_ai changes.
 
 **Location:** `netlify/functions/_lib/llm.js`, line 28:
 ```js
-const MODEL = 'gemini-3-flash-preview';
+const MODEL = 'gemini-2.5-flash';
 ```
 
 Change the model in one place only. Features 4-7 must not hardcode model names — they import `MODEL` from `llm.js` if they need to log or display it.
 
-**Why `gemini-3-flash-preview` over `gemini-2.5-flash`:** Google's current recommended default for general text tasks. Preview/experimental status noted — if instability is observed in pilot, drop back to `gemini-2.5-flash` (stable) by changing the single constant.
+**Why `gemini-2.5-flash` (not `gemini-3-flash-preview`):** Two hard constraints:
+1. **Free-tier requirement** — MVP runs on Google AI Studio free tier. `gemini-3-flash-preview` is paid-tier only.
+2. **Google ToS** — preview/experimental models are classified as not-for-production. `gemini-2.5-flash` is GA and free-tier eligible.
 
-**Thinking budget note:** `gemini-3-flash-preview` has thinking ON at HIGH by default. For latency-sensitive Features 4-7, callers can add `config.thinkingConfig: { thinkingLevel: 'LOW' }` to `_ai.models.generateContent()` calls inside `llm.js` if first-token latency becomes a problem. Not changed now — default behavior kept until pilot data shows it's needed.
+`gemini-2.5-flash` is Google's current stable Flash model with thinking support. No instability risk, no billing surprise.
+
+**Thinking budget note:** `gemini-2.5-flash` supports `thinkingConfig`. For latency-sensitive Features 4-7, callers can add `config.thinkingConfig: { thinkingBudget: 0 }` to disable thinking if first-token latency becomes a problem. Not set now — default behavior kept until pilot data shows it's needed.
 
 ---
 
@@ -50,13 +54,16 @@ All errors thrown by `generate()` and `generateStreaming()` are normalized to th
 
 ```js
 {
-  code: 'RATE_LIMITED'       // HTTP 429
-       | 'TIMEOUT'           // AbortError or HTTP 408
-       | 'LLM_UPSTREAM_ERROR'// HTTP 5xx
-       | 'LLM_ERROR',        // everything else
+  code: 'RATE_LIMITED'        // HTTP 429
+       | 'TIMEOUT'            // AbortError or HTTP 408
+       | 'LLM_UPSTREAM_ERROR' // HTTP 5xx
+       | 'LLM_ERROR'          // all other HTTP errors from the SDK
+       | 'MISSING_API_KEY'    // GEMINI_API_KEY not set at call time
+       | 'MALFORMED_RESPONSE' // SDK returned empty or missing response.text
+       | 'UNKNOWN_CONFIG_KEY',// caller passed a key not in ALLOWED_CONFIG_KEYS
   message: string,
-  retriable: boolean,        // true for RATE_LIMITED and LLM_UPSTREAM_ERROR
-  status: number,            // HTTP status code
+  retriable: boolean,         // true for RATE_LIMITED and LLM_UPSTREAM_ERROR only
+  status: number | null,      // HTTP status code; null for non-HTTP errors
 }
 ```
 
@@ -71,8 +78,10 @@ Raw `ApiError` from `@google/genai` is never surfaced outside `llm.js`.
 - **Timeout:** A 30s internal timeout is applied on every call via `AbortSignal.timeout(30_000)`. Override by passing a shorter signal.
 - **Caller signal:** Pass via `signal` param (e.g. from `event.headers['connection']` close listener in a Netlify function, or `AbortController` for test).
 - **Combined:** `AbortSignal.any([callerSignal, timeoutSignal])` — whichever fires first wins. Requires Node 20.3+ — satisfied by `engines.node: "20.x"`.
-- **Non-streaming:** `Promise.race()` against the combined signal. The upstream Gemini HTTP request may not be cancelled at the network level — Codex pre-impl must validate whether `@google/genai` v1.50.1 propagates the AbortSignal to the underlying fetch. If not, the local promise rejects but the upstream request completes. For pilot scale this is acceptable; fix before production load.
-- **Streaming:** Signal checked on each chunk iteration in the `ReadableStream` start method. Same upstream caveat applies.
+- **SDK propagation (Fix 1):** `abortSignal: combined` is now passed inside `config` to `generateContent` / `generateContentStream`. The `@google/genai` v1.50.1 SDK reads it from `params.config.abortSignal` and forwards it to the underlying HTTP fetch.
+- **Client-side caveat (from SDK docs):** *"AbortSignal is a client-only operation. Using it to cancel an operation will not cancel the request in the service. You will still be charged usage for any applicable operations."* Abort stops the local promise chain and terminates the streaming loop; it does not guarantee the upstream inference stops immediately.
+- **Non-streaming:** `Promise.race()` against the combined signal plus `abortSignal` in config — belt and suspenders.
+- **Streaming:** Signal checked on each chunk iteration in the `ReadableStream` start method, in addition to `abortSignal` in config.
 
 ---
 
@@ -87,14 +96,16 @@ const text = await generate({
   messages: [
     { role: 'user', parts: [{ text: '...' }] },
   ],
-  maxOutputTokens: 512,          // optional, defaults to 1024
-  signal: myAbortSignal,         // optional
+  maxOutputTokens: 512,           // optional, defaults to 1024
+  signal: myAbortSignal,          // optional
+  config: { temperature: 0.3 },   // optional — see ALLOWED_CONFIG_KEYS below
 });
 
 // Streaming — e.g. per-question commentary, why-this-question
 const stream = await generateStreaming({
   system: 'You are a concise SAT tutor...',
   messages: [...],
+  config: { thinkingConfig: { thinkingBudget: 0 } }, // disable thinking for latency
 });
 // Stream to SSE client:
 const reader = stream.getReader();
@@ -106,6 +117,23 @@ while (true) {
 ```
 
 `messages` format: standard Gemini `Content[]` — `[{ role: 'user'|'model', parts: [{ text: '...' }] }]`. Multi-turn: alternate user/model roles.
+
+### ALLOWED_CONFIG_KEYS
+
+Caller config is validated against an allowlist. Passing an unknown key throws `{ code: 'UNKNOWN_CONFIG_KEY' }` immediately — loud failure, not silent drop.
+
+```
+candidateCount    frequencyPenalty  logprobs          presencePenalty
+responseLogprobs  responseMimeType  responseModalities responseSchema
+safetySettings    seed              stopSequences      temperature
+thinkingConfig    toolConfig        tools              topK
+topP
+```
+
+**Override rules — these three keys are controlled by `llm.js` and cannot be set via `config`:**
+- `systemInstruction` — always set from the `system` param
+- `maxOutputTokens` — always set from the `maxOutputTokens` param (default 1024)
+- `abortSignal` — always set to the combined caller+timeout signal
 
 ---
 
