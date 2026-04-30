@@ -1,2 +1,16 @@
 config.js
 node_modules/
+# Cowork scratchpad
+.cowork_notes
+
+
+# Harness artifacts (per-run, not for repo)
+harness_snapshot_*.json
+harness_report_*.json
+harness_report_*.md
+harness_residue_*.json
+
+# Secrets � NEVER commit
+.env
+.env.local
+.env.*.local
