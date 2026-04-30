@@ -14,3 +14,5 @@ harness_residue_*.json
 .env
 .env.local
 .env.*.local
+# Blind test outputs (deletable test infrastructure)
+docs/blind-test/
