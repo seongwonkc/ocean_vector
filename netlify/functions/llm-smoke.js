@@ -11,10 +11,15 @@
 // Usage (POST — custom prompts for blind quality test):
 //   POST /.netlify/functions/llm-smoke
 //   Content-Type: application/json
-//   Body: { "system": "...", "user": "...", "mode": "generate" (default), "timeout_ms": N (optional) }
-//   — mode: only 'generate' is supported on POST (streaming not needed for quality test)
-//   — Missing or non-string system/user → 400 { ok: false, error: { code: 'INVALID_REQUEST', ... } }
-//   — Malformed JSON body → 400 same shape
+//   Body: { "system": "...", "user": "...", "mode": "generate"|"stream", "timeout_ms": N }
+//   mode defaults to 'generate'. stream collects chunks and returns the same shape as GET stream.
+//   Missing or non-string system/user → 400 { ok: false, error: { code: 'INVALID_REQUEST', ... } }
+//   Malformed JSON body → 400 same shape
+//
+//   curl example:
+//   curl -X POST https://<site>/.netlify/functions/llm-smoke \
+//     -H "Content-Type: application/json" \
+//     -d '{"system":"You are a concise SAT tutor.","user":"Explain active vs passive voice."}'
 //
 // Returns JSON: { ok, mode, model, text, chunks? } on success
 //               { ok: false, error: { code, message, retriable, status } } on failure
@@ -117,6 +122,34 @@ async function _handlePost(event) {
   const timeoutMs = typeof timeout_ms === 'number' ? timeout_ms : null;
   const signal = timeoutMs != null ? AbortSignal.timeout(timeoutMs) : undefined;
 
+  // ── POST streaming ──────────────────────────────────────────────────────────
+  if (mode === 'stream') {
+    try {
+      const stream = await generateStreaming({ system, messages, signal });
+      const reader = stream.getReader();
+      const chunks = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+      return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ok: true,
+          mode: 'stream',
+          model: MODEL,
+          text: chunks.join(''),
+          chunks: chunks.length,
+        }),
+      };
+    } catch (err) {
+      return _errorResponse(err);
+    }
+  }
+
+  // ── POST non-streaming (default) ────────────────────────────────────────────
   try {
     const text = await generate({ system, messages, signal });
     return {
