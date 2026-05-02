@@ -62,7 +62,7 @@ exports.handler = async (event) => {
     const idsParam = '(' + ids.map(encodeURIComponent).join(',') + ')';
     const qUrl = `${SUPABASE_URL}/rest/v1/questions` +
       `?question_id=in.${idsParam}&active=eq.true` +
-      `&select=question_id,section,domain,difficulty,question_type,is_spr,passage,question_text,answer_a,answer_b,answer_c,answer_d,correct_answer`;
+      `&select=question_id,section,domain,difficulty,question_type,passage,question_text,answer_a,answer_b,answer_c,answer_d,correct_answer`;
     const qRes = await fetch(qUrl, { headers: makeSupabaseHeaders() });
     if (!qRes.ok) {
       const text = await qRes.text();
