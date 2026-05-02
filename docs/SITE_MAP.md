@@ -2,8 +2,9 @@
 
 > Route inventory for the VECTOR web app (ocean_vector).
 > Updated as routes are added or retired.
-> Last updated: 2026-04-29
+> Last updated: 2026-05-02
 > Feature 1 retired: quiz.html, dashboard.html, consultant.html, results.html (OCEAN-era pages, never in this map)
+> Feature 3 added: welcome.html, synthesis.html; assessment.html upgraded to full diagnostic flow
 
 ---
 
@@ -23,7 +24,9 @@
 
 | Route | File | Purpose | Notes |
 |-------|------|---------|-------|
-| `/assessment` | `assessment.html` | Main SAT practice session. | Primary product surface. |
+| `/welcome` | `welcome.html` | Diagnostic landing page. Shown to first-time users (startedAt null). "Begin Diagnostic" CTA → `/assessment`. | Feature 3. |
+| `/assessment` | `assessment.html` | 30-question diagnostic (Feature 3) and future practice sessions. | Primary product surface. |
+| `/synthesis` | `synthesis.html` | Post-diagnostic placeholder. Parses `?session_ref=` from query string. Full results UI deferred to Feature 4. | Feature 3 placeholder. |
 | `/profile` | `profile.html` | 3-section student profile: patterns / trajectory / open questions. | MVP feature 6. |
 | `/account` | `account.html` (to be created) or section within existing settings | Account management + data controls. | See Account / Settings spec below. |
 
@@ -60,6 +63,9 @@ Not user-facing. Listed for completeness.
 
 | Path | Function | Purpose |
 |------|----------|---------|
+| `/.netlify/functions/vector-bootstrap-user` | `vector-bootstrap-user.js` | Idempotent upsert: seneca_users + seneca_limb_bridges on auth landing |
+| `/.netlify/functions/vector-check-diagnostic-status` | `vector-check-diagnostic-status.js` | Read diagnostic_started_at / diagnostic_completed_at from bridge |
+| `/.netlify/functions/vector-start-diagnostic` | `vector-start-diagnostic.js` | Stamp diagnostic_started_at on bridge (idempotent) |
 | `/.netlify/functions/seneca-sdk-gateway` | `seneca-sdk-gateway.js` | SDK ingest endpoint (observe, sessionSignal, linkUser, getUserModel) |
 | `/.netlify/functions/seneca-export-data` | `seneca-export-data.js` | Rule 8 data export |
 | `/.netlify/functions/seneca-delete-data` | `seneca-delete-data.js` | Account + data deletion |

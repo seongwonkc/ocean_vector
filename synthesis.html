@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VECTOR | Results</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .synth-wrap {
+      max-width: 520px;
+      margin: 80px auto 0;
+      padding: 0 24px;
+      text-align: center;
+    }
+    .synth-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent, #0077c8);
+      margin-bottom: 16px;
+    }
+    .synth-title {
+      font-size: clamp(24px, 4vw, 36px);
+      font-weight: 800;
+      color: var(--text, #1a1a1a);
+      margin-bottom: 12px;
+      line-height: 1.2;
+    }
+    .synth-sub {
+      font-size: 15px;
+      color: var(--text-dim, #666);
+      line-height: 1.75;
+      margin-bottom: 32px;
+    }
+    .synth-session-ref {
+      font-size: 12px;
+      font-family: monospace;
+      color: var(--text-dim, #999);
+      background: var(--surface-2, #f5f7fa);
+      border-radius: 6px;
+      padding: 6px 12px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo">VECTOR</div>
+  <button
+    onclick="VectorDB.signOut().then(()=>window.location.replace('/'))"
+    class="nav-link"
+    style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--text-dim,#666);">
+    Sign out
+  </button>
+</nav>
+
+<main>
+  <div class="synth-wrap">
+    <div class="synth-eyebrow">Diagnostic Complete</div>
+    <h1 class="synth-title">You're done.</h1>
+    <p class="synth-sub">
+      Your results are being processed. VECTOR will use your responses
+      to personalise your study plan. Check back soon for your
+      personalised recommendations.
+    </p>
+    <div id="session-ref-display" style="display:none">
+      <div class="synth-session-ref" id="session-ref-text"></div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/app.js"></script>
+<script>
+(async function () {
+  // Auth guard
+  const user = await VectorApp.requireAuth();
+  if (!user) return;
+
+  // Parse ?session_ref= from query string.
+  // synthesis.html is the canonical landing after diagnostic completion.
+  // The session_ref must be preserved in the URL for any downstream
+  // result-fetch (e.g. Feature 4 insight display).
+  const params = new URLSearchParams(window.location.search);
+  const sessionRef = params.get('session_ref');
+  if (sessionRef) {
+    const el = document.getElementById('session-ref-text');
+    const wrap = document.getElementById('session-ref-display');
+    if (el && wrap) {
+      el.textContent = 'Session: ' + sessionRef;
+      wrap.style.display = 'block';
+    }
+  }
+}());
+</script>
+
+</body>
+</html>

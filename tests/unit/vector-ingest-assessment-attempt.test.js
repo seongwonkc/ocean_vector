@@ -37,15 +37,24 @@ function makeEvent({ method = 'POST', jwt = 'valid.jwt.token', body = null } = {
 }
 
 function loadHandler({ fetchResponse = null, sdkObserveMock = null } = {}) {
-  global.fetch = async () => ({
-    ok:     fetchResponse ? fetchResponse.ok !== false : true,
-    status: fetchResponse ? (fetchResponse.status ?? 200) : 200,
-    json:   async () => fetchResponse ? (fetchResponse.body ?? { id: USER_ID, email: 'test@test.com' }) : { id: USER_ID, email: 'test@test.com' },
-    text:   async () => '',
-  });
+  // URL-aware fetch mock:
+  //  - bridge queries → [] (no diagnostic completion)
+  //  - auth / everything else → controlled by fetchResponse
+  global.fetch = async (url) => {
+    if (url.includes('seneca_limb_bridges')) {
+      return { ok: true, status: 200, json: async () => [], text: async () => '[]' };
+    }
+    return {
+      ok:     fetchResponse ? fetchResponse.ok !== false : true,
+      status: fetchResponse ? (fetchResponse.status ?? 200) : 200,
+      json:   async () => fetchResponse ? (fetchResponse.body ?? { id: USER_ID, email: 'test@test.com' }) : { id: USER_ID, email: 'test@test.com' },
+      text:   async () => '',
+    };
+  };
 
   process.env.SUPABASE_URL               = 'https://test.supabase.co';
   process.env.SUPABASE_ANON_KEY          = 'test-anon-key';
+  process.env.SUPABASE_SERVICE_KEY       = 'test-service-key';
   process.env.LIMB_KEY_VECTOR            = 'test-limb-key';
   process.env.SENECA_SDK_GATEWAY_URL     = 'https://test-gateway.netlify.app/.netlify/functions/seneca-sdk-gateway';
 
@@ -54,6 +63,7 @@ function loadHandler({ fetchResponse = null, sdkObserveMock = null } = {}) {
       key.includes('vector-ingest-assessment-attempt') ||
       key.includes('_lib/auth') ||
       key.includes('_lib/errors') ||
+      key.includes('_lib/supabase') ||
       key.includes('_lib/translator')
     ) {
       delete require.cache[key];
@@ -165,5 +175,47 @@ describe('vector-ingest-assessment-attempt', () => {
     });
     const res = await handler.handler(makeEvent());
     assert.ok(res.statusCode >= 400);
+  });
+
+  it('returns 403 DIAGNOSTIC_ALREADY_COMPLETED when bridge shows completed', async () => {
+    // Override global fetch to return a completed bridge row
+    const COMPLETED_AT = '2026-05-01T10:00:00.000Z';
+    global.fetch = async (url) => {
+      if (url.includes('seneca_limb_bridges')) {
+        return {
+          ok: true, status: 200,
+          json: async () => [{ diagnostic_completed_at: COMPLETED_AT }],
+          text: async () => '',
+        };
+      }
+      return {
+        ok: true, status: 200,
+        json: async () => ({ id: USER_ID, email: 'test@test.com' }),
+        text: async () => '',
+      };
+    };
+    // Re-require with the new fetch in place (loadHandler replaces global.fetch,
+    // so call loadHandler first then swap the bridge response out)
+    const { handler } = loadHandler();
+    // Patch global.fetch after loadHandler sets it up, before the actual call
+    global.fetch = async (url) => {
+      if (url.includes('seneca_limb_bridges')) {
+        return {
+          ok: true, status: 200,
+          json: async () => [{ diagnostic_completed_at: COMPLETED_AT }],
+          text: async () => '',
+        };
+      }
+      return {
+        ok: true, status: 200,
+        json: async () => ({ id: USER_ID, email: 'test@test.com' }),
+        text: async () => '',
+      };
+    };
+    const res = await handler.handler(makeEvent());
+    const body = JSON.parse(res.body);
+    assert.equal(res.statusCode, 403);
+    assert.equal(body.error.code, 'DIAGNOSTIC_ALREADY_COMPLETED');
+    assert.equal(body.error.completedAt, COMPLETED_AT);
   });
 });

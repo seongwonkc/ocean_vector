@@ -4,6 +4,7 @@ const KNOWN_ATTEMPT_FIELDS = new Set([
   'questionId', 'isCorrect', 'timeSpentSeconds', 'wasFlagged',
   'numberOfChanges', 'positionInSession', 'skippedFirstTime',
   'confidence', 'sessionRef',
+  'timeToFirstActionSeconds', 'answeredByIdk',
 ]);
 const KNOWN_SESSION_FIELDS = new Set([
   'sessionRef', 'startedAt', 'endedAt', 'durationMinutes',
@@ -53,20 +54,28 @@ function translateQuestionAttempts(attempts, context) {
     }
     logUnknownFields(attempt, KNOWN_ATTEMPT_FIELDS,
       `attempt[${idx}] questionId=${attempt.questionId}`);
+    const questionData = {
+      questionId: attempt.questionId,
+      isCorrect: attempt.isCorrect,
+      timeSpentSeconds: attempt.timeSpentSeconds,
+      wasFlagged: attempt.wasFlagged,
+      numberOfChanges: attempt.numberOfChanges,
+      positionInSession: attempt.positionInSession,
+      skippedFirstTime: attempt.skippedFirstTime,
+    };
+    // Feature 3 optional behavioral signals -- pass through only when present
+    if (attempt.timeToFirstActionSeconds !== undefined) {
+      questionData.timeToFirstActionSeconds = attempt.timeToFirstActionSeconds;
+    }
+    if (attempt.answeredByIdk !== undefined) {
+      questionData.answeredByIdk = attempt.answeredByIdk;
+    }
     return {
       observation: `Question attempt: ${attempt.questionId}`,
       category: 'performance',
       confidence: 0.6,
       sessionRef: attempt.sessionRef || sessionRef,
-      questionData: {
-        questionId: attempt.questionId,
-        isCorrect: attempt.isCorrect,
-        timeSpentSeconds: attempt.timeSpentSeconds,
-        wasFlagged: attempt.wasFlagged,
-        numberOfChanges: attempt.numberOfChanges,
-        positionInSession: attempt.positionInSession,
-        skippedFirstTime: attempt.skippedFirstTime,
-      },
+      questionData,
     };
   });
 }

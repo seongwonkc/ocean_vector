@@ -29,10 +29,31 @@ window.VectorApp = {
   },
 
   async _routeAuthedUser(userId) {
-    // Interim routing: all authenticated users go to /assessment.html.
-    // Feature 6 (/profile) and Feature 3 (/welcome) will add branches here
-    // once those routes ship. dashboard.html retired in Feature 1.
-    window.location.replace('/assessment.html');
+    // Feature 3 routing: bootstrap -> check diagnostic status -> branch.
+    // Not started  -> /welcome.html (first-time landing)
+    // Started / completed -> /assessment.html (resume or completed state)
+    try {
+      const session = await VectorDB.getSession();
+      const token   = session && session.access_token;
+      const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
+
+      // Bootstrap is idempotent -- safe to call on every auth landing.
+      await fetch('/.netlify/functions/vector-bootstrap-user', { method: 'POST', headers }).catch(() => {});
+
+      const statusRes = await fetch('/.netlify/functions/vector-check-diagnostic-status', { headers });
+      const status    = statusRes.ok ? await statusRes.json() : null;
+
+      if (status && !status.error && !status.startedAt && !status.completed) {
+        // Never started -- send to welcome page
+        window.location.replace('/welcome.html');
+      } else {
+        // Started (resume) or completed -- assessment.html handles both states
+        window.location.replace('/assessment.html');
+      }
+    } catch (e) {
+      // Fallback: send to assessment.html which re-checks on load
+      window.location.replace('/assessment.html');
+    }
   },
 
   // Shows the Seneca link banner on protected pages when bridge is missing.

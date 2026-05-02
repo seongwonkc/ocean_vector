@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VECTOR | Diagnostic</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .welcome-wrap {
+      max-width: 620px;
+      margin: 72px auto 0;
+      padding: 0 24px 64px;
+    }
+    .welcome-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent, #0077c8);
+      margin-bottom: 20px;
+    }
+    .welcome-title {
+      font-size: clamp(26px, 5vw, 40px);
+      font-weight: 800;
+      color: var(--text, #1a1a1a);
+      line-height: 1.15;
+      margin-bottom: 20px;
+    }
+    .welcome-body {
+      font-size: 16px;
+      color: var(--text-dim, #555);
+      line-height: 1.75;
+      margin-bottom: 36px;
+    }
+    .welcome-details {
+      background: var(--surface-2, #f5f7fa);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 36px;
+    }
+    .welcome-details-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border, #e8e8e8);
+      color: var(--text, #1a1a1a);
+    }
+    .welcome-details-row:last-child { border-bottom: none; }
+    .welcome-details-label { color: var(--text-dim, #666); }
+    .welcome-cta {
+      display: inline-block;
+      background: var(--accent, #0077c8);
+      color: #fff;
+      font-weight: 700;
+      font-size: 15px;
+      border: none;
+      border-radius: 8px;
+      padding: 14px 32px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .welcome-cta:hover { background: #005fa3; }
+    .welcome-note {
+      margin-top: 18px;
+      font-size: 13px;
+      color: var(--text-dim, #888);
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo">VECTOR</div>
+  <button
+    onclick="VectorDB.signOut().then(()=>window.location.replace('/'))"
+    class="nav-link"
+    style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--text-dim,#666);">
+    Sign out
+  </button>
+</nav>
+
+<main>
+  <div class="welcome-wrap">
+    <h1 class="welcome-title">Welcome to VECTOR.</h1>
+    <p class="welcome-body">
+      VECTOR is built on Seneca — the first persistent cognitive layer for vertical learning AI. Seneca observes how you study and builds an understanding of your strengths and patterns over time.
+    </p>
+    <p class="welcome-body">
+      Your first session is a 30-question diagnostic, about 45 minutes. Take it when you’re ready and have time to focus.
+    </p>
+
+    <button class="welcome-cta" id="begin-btn">Begin diagnostic</button>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/app.js"></script>
+<script>
+(async function () {
+  // Auth guard — redirect to index if not signed in
+  const user = await VectorApp.requireAuth();
+  if (!user) return;
+
+  document.getElementById('begin-btn').addEventListener('click', function () {
+    window.location.href = '/assessment.html?mode=diagnostic';
+  });
+}());
+</script>
+
+</body>
+</html>

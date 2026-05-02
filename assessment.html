@@ -3,84 +3,534 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VECTOR | Assessment</title>
-  <link rel="stylesheet" href="css/styles.css">
-  <style>
-    .placeholder-wrap {
-      max-width: 520px;
-      margin: 80px auto 0;
-      padding: 0 24px;
-      text-align: center;
-    }
-    .placeholder-eyebrow {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--accent, #0077c8);
-      margin-bottom: 16px;
-    }
-    .placeholder-title {
-      font-size: clamp(22px, 4vw, 32px);
-      font-weight: 800;
-      color: var(--text, #1a1a1a);
-      margin-bottom: 12px;
-      line-height: 1.2;
-    }
-    .placeholder-sub {
-      font-size: 15px;
-      color: var(--text-dim, #666);
-      line-height: 1.7;
-    }
-  </style>
+  <title>VECTOR | Diagnostic</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="css/styles-bluebook.css">
 </head>
 <body>
 
-<nav class="nav">
-  <div class="nav-logo">VECTOR</div>
-  <button
-    onclick="VectorDB.signOut().then(()=>window.location.replace(\'\'))"
-    class="nav-link"
-    style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--text-dim,#666);">
-    Sign out
-  </button>
-</nav>
+<!-- Progress strip (3 px top) -->
+<div id="progress-bar-wrap"><div id="progress-bar" style="width:0%"></div></div>
 
-<!-- Seneca link banner (shown when VECTOR_USE_SDK=true and bridge missing) -->
-<div id="seneca-link-banner" style="display:none;align-items:center;justify-content:space-between;
-  gap:12px;padding:10px 20px;background:#fff7e6;border-bottom:1px solid #f5d08a;font-size:13px;">
-  <span>Connect your Seneca account to unlock personalised study guidance.</span>
-  <div style="display:flex;gap:8px;flex-shrink:0;">
-    <a href="/seneca-callback.html" style="font-weight:600;color:#b87000;">Connect</a>
-    <button onclick="sessionStorage.setItem(\'vector_link_banner_dismissed\',\'1\');
-      document.getElementById(\'seneca-link-banner\').style.display=\'none\';"
-      style="background:none;border:none;cursor:pointer;color:#999;font-size:18px;line-height:1;">×</button>
-  </div>
+<!-- Fixed header -->
+<div id="top-nav">
+  <div class="nav-logo">VECTOR <span>Diagnostic</span></div>
+  <div id="nav-timer"></div>
+  <div id="nav-step" class="nav-step">&nbsp;</div>
 </div>
 
-<main id="app">
-  <div class="placeholder-wrap">
-    <div class="placeholder-eyebrow">Diagnostic</div>
-    <div class="placeholder-title">Your session is being prepared.</div>
-    <p class="placeholder-sub">
-      The diagnostic flow is loading. If this message persists,
-      try refreshing the page.
-    </p>
-  </div>
-</main>
+<div id="app">
 
+  <!-- Split-pane layout (RW questions that have a passage) -->
+  <div id="split-layout" class="bb-question-layout" style="display:none">
+    <div class="bb-left-panel">
+      <div class="bb-panel-tag">Reading Passage</div>
+      <div id="passage-content"></div>
+    </div>
+    <div class="bb-divider-line"></div>
+    <div class="bb-right-panel">
+      <div id="question-content"></div>
+      <div class="bb-q-nav">
+        <button id="idk-btn" class="bb-btn bb-btn-ghost">I Don&rsquo;t Know</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="back-btn" class="bb-btn bb-btn-secondary">Back</button>
+          <button id="next-btn" class="bb-btn bb-btn-primary">Next</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Math layout (questions without a passage, or LaTeX-only passage) -->
+  <div id="math-layout" class="bb-math-layout" style="display:none">
+    <div id="math-content"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;
+                margin-top:24px;padding-top:20px;border-top:1px solid var(--border-light)">
+      <button id="idk-btn-math" class="bb-btn bb-btn-ghost">I Don&rsquo;t Know</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="calc-btn" class="bb-btn bb-btn-ghost"
+                onclick="toggleCalc()"
+                style="font-size:12px;padding:6px 12px;">&#x1F5A9; Calculator</button>
+        <button id="back-btn-math" class="bb-btn bb-btn-secondary">Back</button>
+        <button id="next-btn-math" class="bb-btn bb-btn-primary">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resume disclosure (shown only on genuine in-progress resume) -->
+  <div id="resume-disclosure"
+       style="display:none;font-size:13px;color:var(--text-dim);
+              background:var(--bg-subtle,#f5f5f5);border-radius:6px;
+              padding:8px 14px;margin:0 0 16px;max-width:680px;">
+  </div>
+
+  <!-- Status screen (loading / error / stale / completed) -->
+  <div id="status-screen" class="bb-screen">
+    <p class="bb-subtitle" id="status-msg">Loading your diagnostic&hellip;</p>
+  </div>
+
+</div><!-- #app -->
+
+<!-- KaTeX (deferred — loads after DOM, before init async fn awaits Supabase) -->
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer
+  src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js">
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="js/supabase.js"></script>
 <script src="js/app.js"></script>
-<script src="js/linkFlow.js"></script>
+<script src="diagnostic/QUESTION_SET.js"></script>
+<script src="js/renderQuestion.js"></script>
+<script src="js/answerCounter.js"></script>
 <script>
-async function init() {
-  const user = await VectorApp.requireAuth();
-  if (!user) return;
-  await VectorApp.checkBridgeOnProtectedPage();
+// ── VECTOR Diagnostic Controller ─────────────────────────────────────────────
+(function () {
+  'use strict';
+
+  var QUESTION_IDS = window.VECTOR_QUESTION_SET;
+  var TOTAL        = QUESTION_IDS.length;                 // 30
+  // sessionStorage keys
+  var SK_SESSION  = 'vec_d_ref';
+  var SK_ANSWERS  = 'vec_d_ans';
+  var SK_IDX      = 'vec_d_idx';
+  function timerKey(qid, pos)   { return 'vt_'  + qid + '_' + pos; }
+  function ftaKey(qid, pos)     { return 'vtf_' + qid + '_' + pos; }
+
+  // ── Mutable state ─────────────────────────────────────────────────────────
+  var _token       = '';   // Supabase access token for Netlify calls
+  var _idx         = 0;    // current question index (0-based)
+  var _answers     = {};   // { questionId: { key, answeredByIdk, ... } }
+  var _cache       = {};   // { questionId: supabase row }
+  var _sessionRef  = '';
+  var _pendingIdk  = false;
+
+  // ── DOM helpers ───────────────────────────────────────────────────────────
+  function showScreen(id) {
+    ['split-layout','math-layout','status-screen'].forEach(function (s) {
+      document.getElementById(s).style.display = 'none';
+    });
+    document.getElementById(id).style.display = '';
+  }
+  function setStatus(msg) {
+    showScreen('status-screen');
+    document.getElementById('status-msg').innerHTML = msg;
+  }
+
+  // ── API helper ────────────────────────────────────────────────────────────
+  async function api(path, opts) {
+    var res = await fetch('/.netlify/functions/' + path, Object.assign({
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + _token,
+      },
+    }, opts || {}));
+    return res.json();
+  }
+
+  // ── Timer helpers ─────────────────────────────────────────────────────────
+  function startTimer(qid, pos) {
+    var k = timerKey(qid, pos);
+    if (!sessionStorage.getItem(k)) sessionStorage.setItem(k, Date.now().toString());
+  }
+  function elapsedSecs(qid, pos) {
+    var start = parseInt(sessionStorage.getItem(timerKey(qid, pos)) || '0', 10);
+    return start ? Math.round((Date.now() - start) / 1000) : 0;
+  }
+  function recordFTA(qid, pos) {
+    var fk = ftaKey(qid, pos);
+    if (sessionStorage.getItem(fk)) return;
+    var start = parseInt(sessionStorage.getItem(timerKey(qid, pos)) || '0', 10);
+    if (start) sessionStorage.setItem(fk, String(Date.now() - start));
+  }
+  function getFTASecs(qid, pos) {
+    var ms = parseInt(sessionStorage.getItem(ftaKey(qid, pos)) || '0', 10);
+    return ms ? Math.round(ms / 1000) : null;
+  }
+
+  // ── State persistence ─────────────────────────────────────────────────────
+  function saveState() {
+    sessionStorage.setItem(SK_ANSWERS, JSON.stringify(_answers));
+    sessionStorage.setItem(SK_IDX, String(_idx));
+  }
+  function restoreState() {
+    try {
+      var saved = sessionStorage.getItem(SK_ANSWERS);
+      if (saved) _answers = JSON.parse(saved);
+    } catch (e) { _answers = {}; }
+    var savedIdx = sessionStorage.getItem(SK_IDX);
+    if (savedIdx !== null) _idx = parseInt(savedIdx, 10) || 0;
+    var ref = sessionStorage.getItem(SK_SESSION);
+    if (ref) _sessionRef = ref;
+  }
+
+  // ── Question fetch + cache ────────────────────────────────────
+  // Questions are fetched through a Netlify function, not directly from
+  // Supabase. The function re-checks diagnostic_completed_at before serving
+  // any content — the client cannot bypass this gate.
+  async function getQuestion(qid) {
+    if (_cache[qid]) return _cache[qid];
+    var data = await api('vector-fetch-diagnostic-questions', {
+      method: 'POST',
+      body: JSON.stringify({ ids: [qid] }),
+    });
+    if (data.error && data.error.code === 'DIAGNOSTIC_ALREADY_COMPLETED') {
+      setStatus(
+        '<strong>Diagnostic complete.</strong><br>' +
+        'You’ve already finished this diagnostic.<br>' +
+        '<a href="/synthesis.html" style="color:var(--accent)">View results</a>'
+      );
+      return null;
+    }
+    var row = (data.rows && data.rows[0]) || null;
+    if (row) _cache[qid] = row;
+    return row;
+  }
+  function prefetch(startIdx, count) {
+    var ids = QUESTION_IDS.slice(startIdx, startIdx + count)
+      .filter(function (id) { return !_cache[id]; });
+    if (!ids.length) return;
+    api('vector-fetch-diagnostic-questions', {
+      method: 'POST',
+      body: JSON.stringify({ ids: ids }),
+    }).then(function (data) {
+      (data.rows || []).forEach(function (r) { _cache[r.question_id] = r; });
+    }).catch(function () {});
+  }
+
+  // ── Render question ───────────────────────────────────────────────────────
+  async function renderQuestion(idx) {
+    var qid  = QUESTION_IDS[idx];
+    var pos  = idx + 1;
+    var row  = await getQuestion(qid);
+    if (!row) { setStatus('Failed to load question ' + pos + '. Please refresh.'); return; }
+
+    var ans  = _answers[qid] || null;
+    var selKey = ans && !ans.answeredByIdk ? ans.key : null;
+
+    // Prefetch next 3 questions in background
+    prefetch(idx + 1, 3);
+
+    // Start timer (idempotent)
+    startTimer(qid, pos);
+
+    // Determine layout: math = section is 'math' AND passage is short/LaTeX-only
+    // (all diagnostic math questions have passage = LaTeX description or empty)
+    var hasRWPassage = row.section !== 'math' && row.passage && row.passage.trim().length > 0;
+
+    if (hasRWPassage) {
+      showScreen('split-layout');
+      VectorRender.renderPassage(row, document.getElementById('passage-content'));
+      VectorRender.renderStemAndChoices(row, document.getElementById('question-content'), {
+        position: pos, total: TOTAL, selectedAnswer: selKey,
+        onAnswer: function (key) { onAnswerSelected(qid, pos, key); },
+      });
+      wireNavButtons('idk-btn','back-btn','next-btn', qid, pos, idx);
+    } else {
+      // Math layout (includes LaTeX passage descriptions in the stem block)
+      showScreen('math-layout');
+      VectorRender.renderMath(row, document.getElementById('math-content'), {
+        position: pos, total: TOTAL, selectedAnswer: selKey,
+        onAnswer: function (key) { onAnswerSelected(qid, pos, key); },
+      });
+      wireNavButtons('idk-btn-math','back-btn-math','next-btn-math', qid, pos, idx);
+    }
+
+    updateHeader(pos);
+  }
+
+  // ── Answer + IDK ──────────────────────────────────────────────────────────
+  function onAnswerSelected(qid, pos, key) {
+    recordFTA(qid, pos);
+    var prev = _answers[qid];
+    // Increment numberOfChanges only when the selection genuinely changes.
+    // Reclicking the same answer (or IDK→IDK) does not count as a change.
+    var prevKey     = prev ? (prev.answeredByIdk ? 'IDK' : prev.key) : null;
+    var newKey      = key;
+    var prevChanges = prev ? (prev.numberOfChanges || 0) : 0;
+    var changes     = countAnswerChange(prevKey, newKey, prevChanges);
+    _answers[qid] = {
+      key: key,
+      answeredByIdk: false,
+      numberOfChanges: changes,
+      wasFlagged: (prev && prev.wasFlagged) || false,
+      // timeSpentSeconds and timeToFirstActionSeconds are filled on navigation
+    };
+    saveState();
+  }
+
+  function onIdk(qid, pos) {
+    recordFTA(qid, pos);
+    var prev = _answers[qid];
+    // Increment if changing from a concrete answer to IDK.
+    // IDK→IDK (clicking IDK twice) does not count as a change.
+    var prevKey     = prev ? (prev.answeredByIdk ? 'IDK' : prev.key) : null;
+    var prevChanges = prev ? (prev.numberOfChanges || 0) : 0;
+    _answers[qid] = {
+      key: null,
+      answeredByIdk: true,
+      numberOfChanges: countAnswerChange(prevKey, 'IDK', prevChanges),
+      wasFlagged: (prev && prev.wasFlagged) || false,
+    };
+    saveState();
+    // Deselect all choices visually
+    document.querySelectorAll('.bb-choice').forEach(function (l) {
+      l.classList.remove('selected');
+      var r = l.querySelector('input[type=radio]');
+      if (r) r.checked = false;
+    });
+  }
+
+  // ── Navigation ────────────────────────────────────────────────────────────
+  function wireNavButtons(idkId, backId, nextId, qid, pos, idx) {
+    var idkEl  = document.getElementById(idkId);
+    var backEl = document.getElementById(backId);
+    var nextEl = document.getElementById(nextId);
+    var isFirst = idx === 0;
+    var isLast  = idx === TOTAL - 1;
+
+    backEl.disabled = isFirst;
+    backEl.style.opacity = isFirst ? '0.3' : '';
+    nextEl.textContent = isLast ? 'Submit' : 'Next';
+
+    idkEl.onclick  = function () { onIdk(qid, pos); };
+    backEl.onclick = function () { navigateAway(qid, pos); _idx = idx - 1; saveState(); renderQuestion(_idx); };
+    nextEl.onclick = isLast
+      ? function () { navigateAway(qid, pos); onSubmit(); }
+      : function () { navigateAway(qid, pos); _idx = idx + 1; saveState(); renderQuestion(_idx); };
+  }
+
+  // Save time spent when leaving a question
+  function navigateAway(qid, pos) {
+    var secs = elapsedSecs(qid, pos);
+    var ftaSecs = getFTASecs(qid, pos);
+    if (!_answers[qid]) {
+      // Unanswered — record time only
+      _answers[qid] = {
+        key: null,
+        answeredByIdk: false,
+        numberOfChanges: 0,
+        wasFlagged: false,
+        timeSpentSeconds: secs,
+        timeToFirstActionSeconds: ftaSecs,
+      };
+    } else {
+      _answers[qid].timeSpentSeconds = secs;
+      _answers[qid].timeToFirstActionSeconds = ftaSecs;
+    }
+    saveState();
+  }
+
+  // ── Header ────────────────────────────────────────────────────────────────
+  function updateHeader(pos) {
+    var pct = (pos / TOTAL * 100).toFixed(1);
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('nav-step').innerHTML =
+      '<strong>' + pos + '</strong> of ' + TOTAL;
+  }
+
+  // ── Final submit ─────────────────────────────────────────────────────────
+  async function onSubmit() {
+    setStatus('Submitting your answers&hellip;');
+
+    // Build attempt payloads
+    var attempts = [];
+    QUESTION_IDS.forEach(function (qid, i) {
+      var row = _cache[qid];
+      var ans = _answers[qid] || { key: null, answeredByIdk: false, numberOfChanges: 0, wasFlagged: false, timeSpentSeconds: 0 };
+      if (!row) return;
+      var isCorrect = !ans.answeredByIdk && ans.key === row.correct_answer;
+      var attempt = {
+        questionId:        qid,
+        isCorrect:         isCorrect,
+        timeSpentSeconds:  ans.timeSpentSeconds  || 0,
+        wasFlagged:        ans.wasFlagged         || false,
+        numberOfChanges:   ans.numberOfChanges    || 0,
+        positionInSession: i + 1,
+        skippedFirstTime:  !ans.key && !ans.answeredByIdk,
+        answeredByIdk:     !!ans.answeredByIdk,
+      };
+      if (ans.timeToFirstActionSeconds !== undefined && ans.timeToFirstActionSeconds !== null) {
+        attempt.timeToFirstActionSeconds = ans.timeToFirstActionSeconds;
+      }
+      attempts.push(attempt);
+    });
+
+    // Batch in groups of 10
+    var BATCH = 10;
+    for (var i = 0; i < attempts.length; i += BATCH) {
+      var batch = attempts.slice(i, i + BATCH);
+      try {
+        await api('vector-ingest-assessment-attempt', {
+          method: 'POST',
+          body: JSON.stringify({ attempts: batch, sessionRef: _sessionRef }),
+        });
+      } catch (e) {
+        console.error('[Diagnostic] batch submit error', e);
+      }
+    }
+
+    // Session signal
+    var totalCorrect = attempts.filter(function (a) { return a.isCorrect; }).length;
+    var totalAttempted = attempts.length;
+    var engagementScore = parseFloat(
+      (attempts.filter(function (a) { return a.timeSpentSeconds > 0; }).length / TOTAL).toFixed(2)
+    );
+    var now = new Date().toISOString();
+
+    try {
+      await api('vector-ingest-assessment-session', {
+        method: 'POST',
+        body: JSON.stringify({
+          session: {
+            sessionRef:              _sessionRef,
+            startedAt:               sessionStorage.getItem(timerKey(QUESTION_IDS[0], 1))
+                                       ? new Date(parseInt(sessionStorage.getItem(timerKey(QUESTION_IDS[0], 1)), 10)).toISOString()
+                                       : now,
+            endedAt:                 now,
+            durationMinutes:         Math.round(elapsedSecs(QUESTION_IDS[0], 1) / 60),
+            engagementScore:         engagementScore,
+            topics:                  ['reading_writing', 'math'],
+            performanceDelta:        0,
+            context:                 'initial_diagnostic',
+            totalQuestionsAttempted: totalAttempted,
+            totalCorrect:            totalCorrect,
+            sectionsCompleted:       ['diagnostic'],
+            completedFullSession:    true,
+          },
+        }),
+      });
+    } catch (e) {
+      console.error('[Diagnostic] session signal error', e);
+    }
+
+    // Clear saved state
+    sessionStorage.removeItem(SK_ANSWERS);
+    sessionStorage.removeItem(SK_IDX);
+
+    window.location.href = '/synthesis.html?session_ref=' + encodeURIComponent(_sessionRef);
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  (async function init() {
+    // FP4.3: URL contract — /assessment.html?mode=diagnostic is required.
+    // Direct navigation without mode=diagnostic redirects to /welcome.html.
+    var _mode = new URLSearchParams(window.location.search).get('mode');
+    if (_mode !== 'diagnostic') {
+      window.location.replace('/welcome.html');
+      return;
+    }
+
+    var user = await VectorApp.requireAuth();
+    if (!user) return;
+
+    var session = await VectorDB.getSession();
+    _token = session.access_token;
+
+    // Bootstrap (idempotent)
+    try {
+      await api('vector-bootstrap-user', { method: 'POST' });
+    } catch (e) { /* non-fatal */ }
+
+    // Restore any prior state so we can pass sessionRef to the resume function
+    // (used to scope the stale-cleanup DELETE server-side).
+    restoreState();
+
+    // vector-diagnostic-resume: server-side bridge check that handles three cases:
+    //   completed  → 403 DIAGNOSTIC_ALREADY_COMPLETED
+    //   stale      → server cleanup + 200 staleResetCompleted
+    //   in-progress/fresh → 200 { startedAt, completedAt: null }
+    var resume;
+    try {
+      resume = await api('vector-diagnostic-resume', {
+        method: 'POST',
+        body: JSON.stringify({ sessionRef: _sessionRef || null }),
+      });
+    } catch (e) {
+      setStatus('Unable to load your diagnostic. Please refresh.');
+      return;
+    }
+
+    if (resume.error) {
+      if (resume.error.code === 'DIAGNOSTIC_ALREADY_COMPLETED') {
+        setStatus(
+          '<strong>Diagnostic complete.</strong><br>' +
+          'You&rsquo;ve already finished this diagnostic.<br>' +
+          '<a href="/synthesis.html" style="color:var(--accent)">View results</a>'
+        );
+        return;
+      }
+      if (resume.error.code === 'NO_BRIDGE') {
+        setStatus('Setup incomplete. Please refresh or contact support.');
+        return;
+      }
+      setStatus('Unable to load your diagnostic. Please refresh.');
+      return;
+    }
+
+    if (resume.staleResetCompleted) {
+      // Server reset the stale session. Clear local state so the new session
+      // starts clean, then fall through to start-diagnostic below.
+      sessionStorage.removeItem(SK_ANSWERS);
+      sessionStorage.removeItem(SK_IDX);
+      sessionStorage.removeItem(SK_SESSION);
+      _answers = {};
+      _idx = 0;
+      _sessionRef = '';
+    }
+
+    // FP4.2: resume disclosure — shown only on genuine resume (startedAt set,
+    // not stale-reset, not first visit). Understated; not alarming.
+    if (resume.startedAt && !resume.staleResetCompleted) {
+      var discEl = document.getElementById('resume-disclosure');
+      if (discEl) {
+        var startDate = new Date(resume.startedAt).toLocaleDateString('en-US', {
+          year: 'numeric', month: 'long', day: 'numeric'
+        });
+        discEl.textContent = 'You started this on ' + startDate + '. Partial diagnostics expire 7 days after starting.';
+        discEl.style.display = 'block';
+      }
+    }
+
+    // Start if not yet started (idempotent on the server)
+    if (!resume.startedAt) {
+      try {
+        await api('vector-start-diagnostic', { method: 'POST' });
+      } catch (e) { /* non-fatal */ }
+    }
+
+    // Assign or restore session ref
+    if (!_sessionRef) {
+      _sessionRef = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2) + Date.now().toString(36);
+      sessionStorage.setItem(SK_SESSION, _sessionRef);
+    }
+
+    // Clamp index to valid range
+    if (_idx < 0 || _idx >= TOTAL) _idx = 0;
+
+    await renderQuestion(_idx);
+  }());
+
+
+}());
+</script>
+
+<!-- Desmos calculator panel (always in DOM; display:none avoids reload on toggle) -->
+<div id="calc-panel" class="bb-calc-panel" style="display:none;flex-direction:column;">
+  <div class="bb-calc-header">
+    <span>Scientific Calculator</span>
+    <button onclick="toggleCalc()"
+            style="background:none;border:none;color:inherit;cursor:pointer;font-size:16px;line-height:1;">&#x2715;</button>
+  </div>
+  <iframe src="https://www.desmos.com/scientific" class="bb-calc-iframe" title="Desmos Scientific Calculator"></iframe>
+</div>
+
+<script>
+function toggleCalc() {
+  var p = document.getElementById('calc-panel');
+  if (p) p.style.display = (p.style.display === 'none' || !p.style.display) ? 'flex' : 'none';
 }
-init();
 </script>
 
 </body>
